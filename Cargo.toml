@@ -27,7 +27,7 @@ serde_json = "1"
 serde = "1"
 serde_derive = "1"
 serde_dhall = "0.10"
-pyo3 = "0.13"
+pyo3 = "0.14"
 thiserror = "1"
 
 [lib]
