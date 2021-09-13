@@ -28,6 +28,6 @@ requires = ["maturin"]
 build-backend = "maturin"
 
 [tool.maturin]
-manylinux = "2010"
+manylinux = "Manylinux"
 skip-auditwheel = true
 sdist-include = ["dhall/*"]
