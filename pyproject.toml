@@ -15,7 +15,7 @@ python = "^3.6"
 [tool.poetry.dev-dependencies]
 pytest = "~=6.1"
 pylint = "~=2.6"
-flake8 = "~=3.5"
+flake8 = "~=4.0"
 wheel = "*"
 pytest-runner = "*"
 pytest-benchmark = "*"
