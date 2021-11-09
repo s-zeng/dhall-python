@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dhall"
-version = "0.1.8"
+version = "0.1.9"
 description = "Python bindings for dhall, a functional configuration language"
 authors = ["Simon Zeng <contact@simonzeng.com>", "Tristan Cacqueray <tdecacqu@redhat.com>", "Matthias Endler <matthias-endler@gmx.net>"]
 license = "Apache-2.0"
@@ -28,6 +28,6 @@ requires = ["maturin"]
 build-backend = "maturin"
 
 [tool.maturin]
-manylinux = "2010"
-skip-auditwheel = true
+compatibility = "manylinux_2_24"
+skip-auditwheel = false
 sdist-include = ["dhall/*"]

@@ -103,7 +103,7 @@ jobs:
           poetry install
 
       - name: Build Python package
-        run: poetry run maturin build --manylinux 2010 --skip-auditwheel --release --no-sdist --strip --interpreter python${{matrix.python_version}}
+        run: poetry run maturin build --release --strip --interpreter python${{matrix.python_version}}
 
       - name: List wheels
         if: matrix.os == 'windows-latest'
@@ -132,13 +132,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: PyPi publish
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI }}
-        run: poetry run maturin publish --no-sdist --manylinux 2010 --skip-auditwheel --username __token__ --interpreter python${{matrix.python_version}}
-
-      - name: PyPi publish
-        if: matrix.os != 'ubuntu-latest'
         env:
           MATURIN_PASSWORD: ${{ secrets.PYPI }}
         run: poetry run maturin publish --no-sdist --username __token__ --interpreter python${{matrix.python_version}}

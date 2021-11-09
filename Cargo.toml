@@ -1,6 +1,6 @@
 [package]
 name = "dhall"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Simon Zeng <contact@simonzeng.com>", "Tristan Cacqueray <tdecacqu@redhat.com>", "Matthias Endler <matthias-endler@gmx.net>"]
 description = "Python bindings for dhall, a functional configuration language"
 edition = "2018"
@@ -29,6 +29,7 @@ serde_derive = "1"
 serde_dhall = "0.10"
 pyo3 = "0.15"
 thiserror = "1"
+openssl = {version = "0.10", features = ["vendored"]}
 
 [lib]
 name = "dhall"
