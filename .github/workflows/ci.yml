@@ -70,6 +70,9 @@ jobs:
       - name: Build Python package
         run: poetry run maturin build
 
+      - name: Build Python package
+        run: poetry run maturin develop
+
       - name: pytest
         run: poetry run pytest tests
 
