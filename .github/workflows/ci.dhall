@@ -73,33 +73,61 @@ let manylinuxContainer =
 
 let supportPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
 
-let supportedOSs = [ "macos-latest", "windows-latest" ]
+let SupportedOs = < Windows | Mac | Linux >
 
 let releaseCreatedCondition =
       "github.event_name == 'release' && github.event.action == 'created'"
 
-let publisher =
-      \(manylinux : Bool) ->
-        let pythonExec = if manylinux then "python${matrixPython}" else "python"
+let builder =
+      \(os : SupportedOs) ->
+        let pythonExec =
+              merge
+                { Linux = "python${matrixPython}"
+                , Mac = "python"
+                , Windows = "python"
+                }
+                os
 
-        let container = if manylinux then Some manylinuxContainer else None Text
+        let container =
+              merge
+                { Linux = Some manylinuxContainer
+                , Mac = None Text
+                , Windows = None Text
+                }
+                os
 
-        let matrixOses = if manylinux then [ "ubuntu-latest" ] else supportedOSs
+        let runningOs =
+              merge
+                { Linux = GithubActions.RunsOn.Type.ubuntu-latest
+                , Mac = GithubActions.RunsOn.Type.macos-latest
+                , Windows = GithubActions.RunsOn.Type.windows-latest
+                }
+                os
 
         let pythonSetup =
-              if    manylinux
-              then  [] : List GithubActions.Step.Type
-              else  [ setup.python matrixPython ]
+              merge
+                { Linux = [] : List GithubActions.Step.Type
+                , Mac = [ setup.python matrixPython ]
+                , Windows = [ setup.python matrixPython ]
+                }
+                os
+
+        let interpreterArg =
+              merge
+                { Linux = " --interpreter python${matrixPython}"
+                , Mac = " --interpreter python${matrixPython}"
+                , Windows = ""
+                }
+                os
 
         in  GithubActions.Job::{
             , name = Some "Build/test/publish"
-            , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
+            , runs-on = runningOs
             , container
             , needs = Some [ "lint" ]
             , strategy = Some GithubActions.Strategy::{
               , fail-fast = Some True
-              , matrix = toMap
-                  { os = matrixOses, python-version = supportPythons }
+              , matrix = toMap { python-version = supportPythons }
               }
             , steps =
                   pythonSetup
@@ -110,7 +138,7 @@ let publisher =
                     , name = Some "Build and test python package"
                     , run = Some
                         ( unlines
-                            [ "${pythonExec} -m poetry run maturin build --release --strip --interpreter python${matrixPython}"
+                            [ "${pythonExec} -m poetry run maturin build --release --strip${interpreterArg}"
                             , "${pythonExec} -m poetry run maturin develop"
                             , "${pythonExec} -m poetry run pytest tests"
                             ]
@@ -145,7 +173,7 @@ let publisher =
                     , env = Some
                         (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
                     , run = Some
-                        "${pythonExec} -m poetry run maturin publish --username __token__ --interpreter python${matrixPython}"
+                        "${pythonExec} -m poetry run maturin publish --username __token__${interpreterArg}"
                     }
                   ]
             }
@@ -188,11 +216,12 @@ in  GithubActions.Workflow::{
               }
             ]
           }
-        , macWindowsPublish = publisher False
-        , manylinuxPublish = publisher True
+        , macBuild = builder SupportedOs.Mac
+        , windowsBuild = builder SupportedOs.Windows
+        , linuxBuild = builder SupportedOs.Linux
         , bump = GithubActions.Job::{
           , name = Some "Bump minor version"
-          , needs = Some [ "macWindowsPublish", "manylinuxPublish" ]
+          , needs = Some [ "lint" ]
           , `if` = Some releaseCreatedCondition
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
