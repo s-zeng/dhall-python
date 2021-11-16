@@ -232,8 +232,8 @@ in  GithubActions.Workflow::{
               , `if` = Some "github.event.name != 'pull_request'"
               , run = Some
                   ( helpers.unlines
-                      [ "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml"
-                      , "diff expected.yml .github/workflows/ci.yml"
+                      [ "yaml-to-dhall ./.github/workflows/schema.dhall < .github/workflows/ci.yml > expected.dhall"
+                      , "dhall diff ./expected.dhall ./.github/workflows/ci.dhall"
                       ]
                   )
               }
