@@ -93,8 +93,8 @@ in  GithubActions.Workflow::{
               , run = Some
                   ( Prelude.Text.concatSep
                       "\n"
-                      [ "dhall < .github/workflows/ci.dhall > expected.yml"
-                      , "cmp --silent expected.yml .github/workflows/ci.yml"
+                      [ "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml"
+                      , "diff expected.yml .github/workflows/ci.yml"
                       ]
                   )
               }

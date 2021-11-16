@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npip install black isort autoflake"
       - name: Check github actions workflow
-        run: "dhall < .github/workflows/ci.dhall > expected.yml\ncmp --silent expected.yml .github/workflows/ci.yml"
+        run: "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml\ndiff expected.yml .github/workflows/ci.yml"
       - name: Check lint
         run: "isort . --check --diff\nblack . --check"
   publish:
