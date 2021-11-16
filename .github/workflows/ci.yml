@@ -60,7 +60,7 @@ jobs:
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
       - name: Build and test python package
-        run: "python -m poetry run maturin build --release --strip\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
+        run: "python -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
       - if: "matrix.os == 'windows-latest'"
         name: Install wheels
         run: "python -m pip install --find-links=target\\wheels dhall"
@@ -78,7 +78,7 @@ jobs:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
-        run: python -m poetry run maturin publish --username __token__
+        run: "python -m poetry run maturin publish --username __token__ --interpreter python${{ matrix.python-version }}"
     strategy:
       fail-fast: true
       matrix:
@@ -93,7 +93,7 @@ jobs:
           - '3.10'
   manylinuxPublish:
     container: quay.io/pypa/manylinux_2_24_x86_64
-    name: "Build/test/publish (manylinux)"
+    name: Build/test/publish
     needs:
       - lint
     runs-on: "${{ matrix.os }}"
@@ -107,7 +107,7 @@ jobs:
       - name: Install dependencies
         run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
       - name: Build and test python package
-        run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
+        run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
       - if: "matrix.os == 'windows-latest'"
         name: Install wheels
         run: "python${{ matrix.python-version }} -m pip install --find-links=target\\wheels dhall"
@@ -125,7 +125,7 @@ jobs:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
-        run: "python${{ matrix.python-version }} -m poetry run maturin publish --username __token__"
+        run: "python${{ matrix.python-version }} -m poetry run maturin publish --username __token__ --interpreter python${{ matrix.python-version }}"
     strategy:
       fail-fast: true
       matrix:
