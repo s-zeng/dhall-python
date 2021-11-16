@@ -83,7 +83,6 @@ in  GithubActions.Workflow::{
         { lint = GithubActions.Job::{
           , name = Some "Lint check"
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
-          , `if` = Some "github.event.name != 'pull_request'"
           , steps =
             [ GithubActions.steps.actions/checkout
             , setup.python latestPython
@@ -91,6 +90,7 @@ in  GithubActions.Workflow::{
             , installDeps DependencySet.Lint
             , GithubActions.Step::{
               , name = Some "Check github actions workflow"
+              , `if` = Some "github.event.name != 'pull_request'"
               , run = Some
                   ( Prelude.Text.concatSep
                       "\n"

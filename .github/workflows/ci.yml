@@ -55,7 +55,6 @@ jobs:
       - name: Bump and push
         run: "cargo bump patch\npoetry version patch\ngit config user.name github-actions\ngit config user.email github-actions@github.com\ngit add Cargo.toml pyproject.toml\ngit commit -m \"Bump version (automatic commit)\"\ngit push"
   lint:
-    if: "github.event.name != 'pull_request'"
     name: Lint check
     runs-on: ubuntu-latest
     steps:
@@ -70,7 +69,8 @@ jobs:
           version: '1.40.1'
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npip install black isort autoflake"
-      - name: Check github actions workflow
+      - if: "github.event.name != 'pull_request'"
+        name: Check github actions workflow
         run: "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml\ndiff expected.yml .github/workflows/ci.yml"
       - name: Check lint
         run: "isort . --check --diff\nblack . --check"
