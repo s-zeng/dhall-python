@@ -120,8 +120,51 @@ let builder =
                 }
                 os
 
+        let osName =
+              merge { Linux = "Linux", Mac = "Mac", Windows = "Windows" } os
+
+        let mainBuilder =
+              \(release : Bool) ->
+                GithubActions.Step::{
+                , name = Some "Build and test python package"
+                , `if` = Some
+                    ( if    release
+                      then  releaseCreatedCondition
+                      else  "!(${releaseCreatedCondition})"
+                    )
+                , run = Some
+                    ( unlines
+                        [ "${pythonExec} -m poetry run maturin build ${if    release
+                                                                       then  "--release"
+                                                                       else  ""} --strip${interpreterArg}"
+                        , "${pythonExec} -m poetry run maturin develop"
+                        , "${pythonExec} -m poetry run pytest tests"
+                        ]
+                    )
+                }
+
+        let installer =
+              merge
+                { Linux = GithubActions.Step::{
+                  , name = Some "Install wheels"
+                  , run = Some
+                      "${pythonExec} -m pip install target/wheels/dhall*.whl"
+                  }
+                , Mac = GithubActions.Step::{
+                  , name = Some "Install wheels"
+                  , run = Some
+                      "${pythonExec} -m pip install target/wheels/dhall*.whl"
+                  }
+                , Windows = GithubActions.Step::{
+                  , name = Some "Install wheels"
+                  , run = Some
+                      "${pythonExec} -m pip install --find-links=target\\wheels dhall"
+                  }
+                }
+                os
+
         in  GithubActions.Job::{
-            , name = Some "Build/test/publish"
+            , name = Some "Build/test/publish ${osName}"
             , runs-on = runningOs
             , container
             , needs = Some [ "lint" ]
@@ -134,28 +177,9 @@ let builder =
                 # [ setup.rust
                   , GithubActions.steps.actions/checkout
                   , installDeps DependencySet.Full pythonExec
-                  , GithubActions.Step::{
-                    , name = Some "Build and test python package"
-                    , run = Some
-                        ( unlines
-                            [ "${pythonExec} -m poetry run maturin build --release --strip${interpreterArg}"
-                            , "${pythonExec} -m poetry run maturin develop"
-                            , "${pythonExec} -m poetry run pytest tests"
-                            ]
-                        )
-                    }
-                  , GithubActions.Step::{
-                    , name = Some "Install wheels"
-                    , `if` = Some "matrix.os == 'windows-latest'"
-                    , run = Some
-                        "${pythonExec} -m pip install --find-links=target\\wheels dhall"
-                    }
-                  , GithubActions.Step::{
-                    , name = Some "Install wheels"
-                    , `if` = Some "matrix.os != 'windows-latest'"
-                    , run = Some
-                        "${pythonExec} -m pip install target/wheels/dhall*.whl"
-                    }
+                  , mainBuilder False
+                  , mainBuilder True
+                  , installer
                   , GithubActions.Step::{
                     , name = Some "Release"
                     , uses = Some "softprops/action-gh-release@v1"

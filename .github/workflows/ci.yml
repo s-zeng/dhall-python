@@ -42,7 +42,7 @@ jobs:
         run: "isort . --check --diff\nblack . --check"
   linuxBuild:
     container: quay.io/pypa/manylinux_2_24_x86_64
-    name: Build/test/publish
+    name: Build/test/publish Linux
     needs:
       - lint
     runs-on: ubuntu-latest
@@ -55,13 +55,13 @@ jobs:
       - uses: "actions/checkout@v2"
       - name: Install dependencies
         run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
-      - name: Build and test python package
+      - if: "!(github.event_name == 'release' && github.event.action == 'created')"
+        name: Build and test python package
+        run: "python${{ matrix.python-version }} -m poetry run maturin build  --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
+      - if: "github.event_name == 'release' && github.event.action == 'created'"
+        name: Build and test python package
         run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
-      - if: "matrix.os == 'windows-latest'"
-        name: Install wheels
-        run: "python${{ matrix.python-version }} -m pip install --find-links=target\\wheels dhall"
-      - if: "matrix.os != 'windows-latest'"
-        name: Install wheels
+      - name: Install wheels
         run: "python${{ matrix.python-version }} -m pip install target/wheels/dhall*.whl"
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -85,7 +85,7 @@ jobs:
           - '3.9'
           - '3.10'
   macBuild:
-    name: Build/test/publish
+    name: Build/test/publish Mac
     needs:
       - lint
     runs-on: macos-latest
@@ -102,13 +102,13 @@ jobs:
       - uses: "actions/checkout@v2"
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
-      - name: Build and test python package
+      - if: "!(github.event_name == 'release' && github.event.action == 'created')"
+        name: Build and test python package
+        run: "python -m poetry run maturin build  --strip --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
+      - if: "github.event_name == 'release' && github.event.action == 'created'"
+        name: Build and test python package
         run: "python -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
-      - if: "matrix.os == 'windows-latest'"
-        name: Install wheels
-        run: "python -m pip install --find-links=target\\wheels dhall"
-      - if: "matrix.os != 'windows-latest'"
-        name: Install wheels
+      - name: Install wheels
         run: "python -m pip install target/wheels/dhall*.whl"
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -132,7 +132,7 @@ jobs:
           - '3.9'
           - '3.10'
   windowsBuild:
-    name: Build/test/publish
+    name: Build/test/publish Windows
     needs:
       - lint
     runs-on: windows-latest
@@ -149,14 +149,14 @@ jobs:
       - uses: "actions/checkout@v2"
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
-      - name: Build and test python package
+      - if: "!(github.event_name == 'release' && github.event.action == 'created')"
+        name: Build and test python package
+        run: "python -m poetry run maturin build  --strip\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
+      - if: "github.event_name == 'release' && github.event.action == 'created'"
+        name: Build and test python package
         run: "python -m poetry run maturin build --release --strip\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
-      - if: "matrix.os == 'windows-latest'"
-        name: Install wheels
+      - name: Install wheels
         run: "python -m pip install --find-links=target\\wheels dhall"
-      - if: "matrix.os != 'windows-latest'"
-        name: Install wheels
-        run: "python -m pip install target/wheels/dhall*.whl"
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
