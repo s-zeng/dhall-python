@@ -10,21 +10,24 @@ let ghVar
     : Text -> Text
     = \(varName : Text) -> "\${{ ${varName} }}"
 
-let setupPython
-    : Text -> GithubActions.Step.Type
-    = \(version : Text) ->
-        GithubActions.Step::{
-        , uses = Some "actions/setup-python@v2"
-        , name = Some "Setup python ${version}"
-        , `with` = Some (toMap { python-version = version })
+let setup =
+      { dhall = GithubActions.Step::{
+        , uses = Some "dhall-lang/setup-dhall@v4"
+        , name = Some "Install dhall"
+        , `with` = Some (toMap { version = "1.40.1" })
         }
-
-let setupRust
-    : GithubActions.Step.Type
-    = GithubActions.Step::{
-      , uses = Some "actions-rs/toolchain@v1"
-      , name = Some "Install Rust"
-      , `with` = Some (toMap { toolchain = "stable", override = "true" })
+      , python =
+          \(version : Text) ->
+            GithubActions.Step::{
+            , uses = Some "actions/setup-python@v2"
+            , name = Some "Setup python ${version}"
+            , `with` = Some (toMap { python-version = version })
+            }
+      , rust = GithubActions.Step::{
+        , uses = Some "actions-rs/toolchain@v1"
+        , name = Some "Install Rust"
+        , `with` = Some (toMap { toolchain = "stable", override = "true" })
+        }
       }
 
 let DependencySet = < Full | Lint | Bump >
@@ -82,8 +85,19 @@ in  GithubActions.Workflow::{
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
             [ GithubActions.steps.actions/checkout
-            , setupPython latestPython
+            , setup.python latestPython
+            , setup.dhall
             , installDeps DependencySet.Lint
+            , GithubActions.Step::{
+              , name = Some "Check github actions workflow"
+              , run = Some
+                  ( Prelude.Text.concatSep
+                      "\n"
+                      [ "dhall < .github/workflows/ci.dhall > expected.yml"
+                      , "cmp --silent expected.yml .github/workflows/ci.yml"
+                      ]
+                  )
+              }
             , GithubActions.Step::{
               , name = Some "Check lint"
               , run = Some
@@ -106,8 +120,8 @@ in  GithubActions.Workflow::{
             }
           , steps =
             [ GithubActions.steps.actions/checkout
-            , setupPython (ghVar "matrix.python-version")
-            , setupRust
+            , setup.python (ghVar "matrix.python-version")
+            , setup.rust
             , installDeps DependencySet.Full
             , GithubActions.Step::{
               , name = Some "Maturin build and pytest"
@@ -134,8 +148,8 @@ in  GithubActions.Workflow::{
             }
           , steps =
             [ GithubActions.steps.actions/checkout
-            , setupPython (ghVar "matrix.python-version")
-            , setupRust
+            , setup.python (ghVar "matrix.python-version")
+            , setup.rust
             , installDeps DependencySet.Full
             , GithubActions.Step::{
               , name = Some "Build python package"
@@ -177,8 +191,8 @@ in  GithubActions.Workflow::{
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
             [ GithubActions.steps.actions/checkout
-            , setupPython latestPython
-            , setupRust
+            , setup.python latestPython
+            , setup.rust
             , installDeps DependencySet.Bump
             , GithubActions.Step::{
               , name = Some "Bump and push"
