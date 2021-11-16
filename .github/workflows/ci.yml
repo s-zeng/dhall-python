@@ -55,6 +55,7 @@ jobs:
       - name: Bump and push
         run: "cargo bump patch\npoetry version patch\ngit config user.name github-actions\ngit config user.email github-actions@github.com\ngit add Cargo.toml pyproject.toml\ngit commit -m \"Bump version (automatic commit)\"\ngit push"
   lint:
+    if: "github.event.name != 'pull_request'"
     name: Lint check
     runs-on: ubuntu-latest
     steps:

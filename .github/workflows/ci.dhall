@@ -83,6 +83,7 @@ in  GithubActions.Workflow::{
         { lint = GithubActions.Job::{
           , name = Some "Lint check"
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
+          , `if` = Some "github.event.name != 'pull_request'"
           , steps =
             [ GithubActions.steps.actions/checkout
             , setup.python latestPython
