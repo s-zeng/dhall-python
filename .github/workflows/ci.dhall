@@ -46,7 +46,8 @@ let installDeps =
         let deps =
               merge
                 { Full = fullDeps
-                , Lint = [ "${pythonExec} -m pip install black isort autoflake" ]
+                , Lint =
+                  [ "${pythonExec} -m pip install black isort autoflake" ]
                 , Bump = [ "cargo install cargo-bump" ] # fullDeps
                 }
                 installType
@@ -54,7 +55,9 @@ let installDeps =
         in  GithubActions.Step::{
             , name = Some "Install dependencies"
             , run = Some
-                (unlines ([ "${pythonExec} -m pip install --upgrade pip" ] # deps))
+                ( unlines
+                    ([ "${pythonExec} -m pip install --upgrade pip" ] # deps)
+                )
             }
 
 let latestPython = "3.10"
@@ -96,13 +99,12 @@ let manylinuxify
                 # Prelude.List.drop 2 GithubActions.Step.Type job.steps
             }
 
-let builder =
+let publisher =
       \(pythonExec : Text) ->
         GithubActions.Job::{
-        , name = Some "Build/test wheels"
+        , name = Some "Build/test/publish"
         , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
         , needs = Some [ "lint" ]
-        , `if` = Some "github.event.name != 'release'"
         , strategy = Some GithubActions.Strategy::{
           , fail-fast = Some True
           , matrix = toMap
@@ -114,39 +116,14 @@ let builder =
           , setup.rust
           , installDeps DependencySet.Full pythonExec
           , GithubActions.Step::{
-            , name = Some "Maturin build and pytest"
+            , name = Some "Build and test python package"
             , run = Some
                 ( unlines
-                    [ "${pythonExec} -m poetry run maturin build --interpreter python${matrixPython}"
+                    [ "${pythonExec} -m poetry run maturin build --release --strip --interpreter python${matrixPython}"
                     , "${pythonExec} -m poetry run maturin develop"
                     , "${pythonExec} -m poetry run pytest tests"
                     ]
                 )
-            }
-          ]
-        }
-
-let publisher =
-      \(pythonExec : Text) ->
-        GithubActions.Job::{
-        , name = Some "Publish wheels to PyPI"
-        , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
-        , needs = Some [ "macWindowsBuild", "manylinuxBuild" ]
-        , `if` = Some releaseCreatedCondition
-        , strategy = Some GithubActions.Strategy::{
-          , fail-fast = Some True
-          , matrix = toMap
-              { os = supportedOSs, python-version = supportPythons }
-          }
-        , steps =
-          [ GithubActions.steps.actions/checkout
-          , setup.python matrixPython
-          , setup.rust
-          , installDeps DependencySet.Full pythonExec
-          , GithubActions.Step::{
-            , name = Some "Build python package"
-            , run = Some
-                "${pythonExec} -m poetry run maturin build --release --strip --interpreter python${matrixPython}"
             }
           , GithubActions.Step::{
             , name = Some "Install wheels"
@@ -162,12 +139,15 @@ let publisher =
           , GithubActions.Step::{
             , name = Some "Release"
             , uses = Some "softprops/action-gh-release@v1"
-            , `if` = Some "startsWith(github.ref, 'refs/tags/')"
+            , `if` = Some
+                "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
             , `with` = Some (toMap { files = "target/wheels/dhall*.whl" })
             , env = Some (toMap { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" })
             }
           , GithubActions.Step::{
             , name = Some "PyPI publish"
+            , `if` = Some
+                "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
             , env = Some (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
             , run = Some
                 "${pythonExec} -m poetry run maturin publish --username __token__ --interpreter python${ghVar
@@ -214,8 +194,6 @@ in  GithubActions.Workflow::{
               }
             ]
           }
-        , macWindowsBuild = builder "python"
-        , manylinuxBuild = manylinuxify (builder "python${matrixPython}")
         , macWindowsPublish = publisher "python"
         , manylinuxPublish = manylinuxify (publisher "python${matrixPython}")
         , bump = GithubActions.Job::{

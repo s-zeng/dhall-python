@@ -41,9 +41,8 @@ jobs:
         run: "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml\ndiff expected.yml .github/workflows/ci.yml"
       - name: Check lint
         run: "isort . --check --diff\nblack . --check"
-  macWindowsBuild:
-    if: "github.event.name != 'release'"
-    name: Build/test wheels
+  macWindowsPublish:
+    name: Build/test/publish
     needs:
       - lint
     runs-on: "${{ matrix.os }}"
@@ -60,42 +59,8 @@ jobs:
           toolchain: stable
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
-      - name: Maturin build and pytest
-        run: "python -m poetry run maturin build --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - macos-latest
-          - windows-latest
-        python-version:
-          - '3.6'
-          - '3.7'
-          - '3.8'
-          - '3.9'
-          - '3.10'
-  macWindowsPublish:
-    if: "github.event_name == 'release' && github.event.action == 'created'"
-    name: Publish wheels to PyPI
-    needs:
-      - macWindowsBuild
-      - manylinuxBuild
-    runs-on: "${{ matrix.os }}"
-    steps:
-      - uses: "actions/checkout@v2"
-      - name: "Setup python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@v2"
-        with:
-          python-version: "${{ matrix.python-version }}"
-      - name: Install Rust
-        uses: "actions-rs/toolchain@v1"
-        with:
-          override: 'true'
-          toolchain: stable
-      - name: Install dependencies
-        run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
-      - name: Build python package
-        run: "python -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}"
+      - name: Build and test python package
+        run: "python -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
       - if: "matrix.os == 'windows-latest'"
         name: Install wheels
         run: "python -m pip install --find-links=target\\wheels dhall"
@@ -104,13 +69,14 @@ jobs:
         run: "python -m pip install target/wheels/dhall*.whl"
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        if: "startsWith(github.ref, 'refs/tags/')"
+        if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: Release
         uses: "softprops/action-gh-release@v1"
         with:
           files: "target/wheels/dhall*.whl"
       - env:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
+        if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
         run: "python -m poetry run maturin publish --username __token__ --interpreter python${{ matrix.python_version }}"
     strategy:
@@ -125,10 +91,9 @@ jobs:
           - '3.8'
           - '3.9'
           - '3.10'
-  manylinuxBuild:
+  manylinuxPublish:
     container: quay.io/pypa/manylinux_2_24_x86_64
-    if: "github.event.name != 'release'"
-    name: "Build/test wheels (manylinux)"
+    name: "Build/test/publish (manylinux)"
     needs:
       - lint
     runs-on: "${{ matrix.os }}"
@@ -141,38 +106,8 @@ jobs:
           toolchain: stable
       - name: Install dependencies
         run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
-      - name: Maturin build and pytest
-        run: "python${{ matrix.python-version }} -m poetry run maturin build --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
-        python-version:
-          - '3.6'
-          - '3.7'
-          - '3.8'
-          - '3.9'
-          - '3.10'
-  manylinuxPublish:
-    container: quay.io/pypa/manylinux_2_24_x86_64
-    if: "github.event_name == 'release' && github.event.action == 'created'"
-    name: "Publish wheels to PyPI (manylinux)"
-    needs:
-      - macWindowsBuild
-      - manylinuxBuild
-    runs-on: "${{ matrix.os }}"
-    steps:
-      - uses: "actions/checkout@v2"
-      - name: Install Rust
-        uses: "actions-rs/toolchain@v1"
-        with:
-          override: 'true'
-          toolchain: stable
-      - name: Install dependencies
-        run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
-      - name: Build python package
-        run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}"
+      - name: Build and test python package
+        run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
       - if: "matrix.os == 'windows-latest'"
         name: Install wheels
         run: "python${{ matrix.python-version }} -m pip install --find-links=target\\wheels dhall"
@@ -181,13 +116,14 @@ jobs:
         run: "python${{ matrix.python-version }} -m pip install target/wheels/dhall*.whl"
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        if: "startsWith(github.ref, 'refs/tags/')"
+        if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: Release
         uses: "softprops/action-gh-release@v1"
         with:
           files: "target/wheels/dhall*.whl"
       - env:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
+        if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
         run: "python${{ matrix.python-version }} -m poetry run maturin publish --username __token__ --interpreter python${{ matrix.python_version }}"
     strategy:
