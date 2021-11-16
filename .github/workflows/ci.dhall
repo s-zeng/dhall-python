@@ -214,10 +214,10 @@ in  GithubActions.Workflow::{
         , macWindowsBuild = builder { manylinux = False }
         , manylinuxBuild = builder { manylinux = True }
         , macWindowsPublish = publisher { manylinux = False }
-        , manylinuxPublisher = publisher { manylinux = True }
+        , manylinuxPublish = publisher { manylinux = True }
         , bump = GithubActions.Job::{
           , name = Some "Bump minor version"
-          , needs = Some [ "publish" ]
+          , needs = Some [ "macWindowsPublish", "manylinuxPublish" ]
           , `if` = Some releaseCreatedCondition
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
