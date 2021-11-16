@@ -76,7 +76,7 @@ jobs:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
-        run: "python${{ matrix.python-version }} -m poetry run maturin publish --username __token__ --interpreter python${{ matrix.python-version }}"
+        run: "python${{ matrix.python-version }} -m poetry run maturin publish --no-sdist --username __token__ --interpreter python${{ matrix.python-version }}"
     strategy:
       fail-fast: true
       matrix:
@@ -123,7 +123,7 @@ jobs:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
-        run: "python -m poetry run maturin publish --username __token__ --interpreter python${{ matrix.python-version }}"
+        run: "python -m poetry run maturin publish --no-sdist --username __token__ --interpreter python${{ matrix.python-version }}"
     strategy:
       fail-fast: true
       matrix:
@@ -170,7 +170,7 @@ jobs:
           MATURIN_PASSWORD: "${{ secrets.PYPI }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"
         name: PyPI publish
-        run: python -m poetry run maturin publish --username __token__
+        run: python -m poetry run maturin publish --no-sdist --username __token__
     strategy:
       fail-fast: true
       matrix:

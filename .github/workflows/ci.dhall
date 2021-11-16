@@ -203,7 +203,7 @@ let builder =
                             { MATURIN_PASSWORD = helpers.ghVar "secrets.PYPI" }
                         )
                     , run = Some
-                        "${pythonExec} -m poetry run maturin publish --username __token__${interpreterArg}"
+                        "${pythonExec} -m poetry run maturin publish --no-sdist --username __token__${interpreterArg}"
                     }
                   ]
             }
