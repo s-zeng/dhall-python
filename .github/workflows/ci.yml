@@ -66,7 +66,7 @@ jobs:
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npip install black isort autoflake"
       - name: Check lint
-        run: "isort . --check --diff\nblack . -- check"
+        run: "isort . --check --diff\nblack . --check"
   publish:
     if: "github.event_name == 'release' && github.event.action == 'created'"
     name: Publish wheels to PyPI
