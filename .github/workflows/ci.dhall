@@ -36,18 +36,17 @@ let DependencySet = < Full | Lint | Bump >
 
 let installDeps =
       \(installType : DependencySet) ->
-      \(pyversion : Text) ->
+      \(pythonExec : Text) ->
         let fullDeps =
-              [ "python${pyversion} -m pip install poetry"
+              [ "pythonExec -m pip install poetry"
               , "touch Cargo.toml.orig"
-              , "python${pyversion} -m poetry install"
+              , "pythonExec -m poetry install"
               ]
 
         let deps =
               merge
                 { Full = fullDeps
-                , Lint =
-                  [ "python${pyversion} -m pip install black isort autoflake" ]
+                , Lint = [ "pythonExec -m pip install black isort autoflake" ]
                 , Bump = [ "cargo install cargo-bump" ] # fullDeps
                 }
                 installType
@@ -55,11 +54,7 @@ let installDeps =
         in  GithubActions.Step::{
             , name = Some "Install dependencies"
             , run = Some
-                ( unlines
-                    (   [ "python${pyversion} -m pip install --upgrade pip" ]
-                      # deps
-                    )
-                )
+                (unlines ([ "pythonExec -m pip install --upgrade pip" ] # deps))
             }
 
 let latestPython = "3.10"
@@ -80,8 +75,9 @@ let supportedOSs = [ "macos-latest", "windows-latest" ]
 let releaseCreatedCondition =
       "github.event_name == 'release' && github.event.action == 'created'"
 
-let manylinuxify =
-      \(job : GithubActions.Job.Type) ->
+let manylinuxify
+    : GithubActions.Job.Type -> GithubActions.Job.Type
+    = \(job : GithubActions.Job.Type) ->
             job
         //  { name =
                 Prelude.Optional.map
@@ -95,87 +91,87 @@ let manylinuxify =
               , matrix = toMap
                   { os = [ "ubuntu-latest" ], python-version = supportPythons }
               }
-            , steps =
-                  Prelude.List.take 1 GithubActions.Step.Type job.steps
-                # Prelude.List.drop 2 GithubActions.Step.Type job.steps
             }
 
 let builder =
-      GithubActions.Job::{
-      , name = Some "Build/test wheels"
-      , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
-      , needs = Some [ "lint" ]
-      , `if` = Some "github.event.name != 'release'"
-      , strategy = Some GithubActions.Strategy::{
-        , fail-fast = Some True
-        , matrix = toMap { os = supportedOSs, python-version = supportPythons }
-        }
-      , steps =
-        [ GithubActions.steps.actions/checkout
-        , setup.python matrixPython
-        , setup.rust
-        , installDeps DependencySet.Full matrixPython
-        , GithubActions.Step::{
-          , name = Some "Maturin build and pytest"
-          , run = Some
-              ( unlines
-                  [ "python${matrixPython} -m poetry run maturin build --interpreter python${matrixPython}"
-                  , "python${matrixPython} -m poetry run maturin develop --interpreter python${matrixPython}"
-                  , "python${matrixPython} -m poetry run pytest tests --interpreter python${matrixPython}"
-                  ]
-              )
+      \(pythonExec : Text) ->
+        GithubActions.Job::{
+        , name = Some "Build/test wheels"
+        , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
+        , needs = Some [ "lint" ]
+        , `if` = Some "github.event.name != 'release'"
+        , strategy = Some GithubActions.Strategy::{
+          , fail-fast = Some True
+          , matrix = toMap
+              { os = supportedOSs, python-version = supportPythons }
           }
-        ]
-      }
+        , steps =
+          [ GithubActions.steps.actions/checkout
+          , setup.python matrixPython
+          , setup.rust
+          , installDeps DependencySet.Full pythonExec
+          , GithubActions.Step::{
+            , name = Some "Maturin build and pytest"
+            , run = Some
+                ( unlines
+                    [ "${pythonExec} -m poetry run maturin build --interpreter python${matrixPython}"
+                    , "${pythonExec} -m poetry run maturin develop"
+                    , "${pythonExec} -m poetry run pytest tests"
+                    ]
+                )
+            }
+          ]
+        }
 
 let publisher =
-      GithubActions.Job::{
-      , name = Some "Publish wheels to PyPI"
-      , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
-      , needs = Some [ "macWindowsBuild", "manylinuxBuild" ]
-      , `if` = Some releaseCreatedCondition
-      , strategy = Some GithubActions.Strategy::{
-        , fail-fast = Some True
-        , matrix = toMap { os = supportedOSs, python-version = supportPythons }
+      \(pythonExec : Text) ->
+        GithubActions.Job::{
+        , name = Some "Publish wheels to PyPI"
+        , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
+        , needs = Some [ "macWindowsBuild", "manylinuxBuild" ]
+        , `if` = Some releaseCreatedCondition
+        , strategy = Some GithubActions.Strategy::{
+          , fail-fast = Some True
+          , matrix = toMap
+              { os = supportedOSs, python-version = supportPythons }
+          }
+        , steps =
+          [ GithubActions.steps.actions/checkout
+          , setup.python matrixPython
+          , setup.rust
+          , installDeps DependencySet.Full pythonExec
+          , GithubActions.Step::{
+            , name = Some "Build python package"
+            , run = Some
+                "${pythonExec} -m poetry run maturin build --release --strip --interpreter python${matrixPython}"
+            }
+          , GithubActions.Step::{
+            , name = Some "Install wheels"
+            , `if` = Some "matrix.os == 'windows-latest'"
+            , run = Some
+                "${pythonExec} -m pip install --find-links=target\\wheels dhall"
+            }
+          , GithubActions.Step::{
+            , name = Some "Install wheels"
+            , `if` = Some "matrix.os != 'windows-latest'"
+            , run = Some "${pythonExec} -m pip install target/wheels/dhall*.whl"
+            }
+          , GithubActions.Step::{
+            , name = Some "Release"
+            , uses = Some "softprops/action-gh-release@v1"
+            , `if` = Some "startsWith(github.ref, 'refs/tags/')"
+            , `with` = Some (toMap { files = "target/wheels/dhall*.whl" })
+            , env = Some (toMap { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" })
+            }
+          , GithubActions.Step::{
+            , name = Some "PyPI publish"
+            , env = Some (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
+            , run = Some
+                "${pythonExec} -m poetry run maturin publish --username __token__ --interpreter python${ghVar
+                                                                                                          "matrix.python_version"}"
+            }
+          ]
         }
-      , steps =
-        [ GithubActions.steps.actions/checkout
-        , setup.python matrixPython
-        , setup.rust
-        , installDeps DependencySet.Full matrixPython
-        , GithubActions.Step::{
-          , name = Some "Build python package"
-          , run = Some
-              "python${matrixPython} -m poetry run maturin build --release --strip --interpreter python${matrixPython}"
-          }
-        , GithubActions.Step::{
-          , name = Some "Install wheels"
-          , `if` = Some "matrix.os == 'windows-latest'"
-          , run = Some
-              "python${matrixPython} -m pip install --find-links=target\\wheels dhall"
-          }
-        , GithubActions.Step::{
-          , name = Some "Install wheels"
-          , `if` = Some "matrix.os != 'windows-latest'"
-          , run = Some
-              "python${matrixPython} -m pip install target/wheels/dhall*.whl"
-          }
-        , GithubActions.Step::{
-          , name = Some "Release"
-          , uses = Some "softprops/action-gh-release@v1"
-          , `if` = Some "startsWith(github.ref, 'refs/tags/')"
-          , `with` = Some (toMap { files = "target/wheels/dhall*.whl" })
-          , env = Some (toMap { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" })
-          }
-        , GithubActions.Step::{
-          , name = Some "PyPI publish"
-          , env = Some (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
-          , run = Some
-              "python${matrixPython} -m poetry run maturin publish --username __token__ --interpreter python${ghVar
-                                                                                                                "matrix.python_version"}"
-          }
-        ]
-      }
 
 in  GithubActions.Workflow::{
     , name = "CI"
@@ -197,7 +193,7 @@ in  GithubActions.Workflow::{
             [ GithubActions.steps.actions/checkout
             , setup.python latestPython
             , setup.dhall
-            , installDeps DependencySet.Lint latestPython
+            , installDeps DependencySet.Lint "python"
             , GithubActions.Step::{
               , name = Some "Check github actions workflow"
               , `if` = Some "github.event.name != 'pull_request'"
@@ -215,10 +211,10 @@ in  GithubActions.Workflow::{
               }
             ]
           }
-        , macWindowsBuild = builder
-        , manylinuxBuild = manylinuxify builder
-        , macWindowsPublish = publisher
-        , manylinuxPublish = manylinuxify publisher
+        , macWindowsBuild = builder "python"
+        , manylinuxBuild = manylinuxify (builder "python${matrixPython}")
+        , macWindowsPublish = publisher "python"
+        , manylinuxPublish = manylinuxify (publisher "python${matrixPython}")
         , bump = GithubActions.Job::{
           , name = Some "Bump minor version"
           , needs = Some [ "macWindowsPublish", "manylinuxPublish" ]
@@ -228,7 +224,7 @@ in  GithubActions.Workflow::{
             [ GithubActions.steps.actions/checkout
             , setup.python latestPython
             , setup.rust
-            , installDeps DependencySet.Bump latestPython
+            , installDeps DependencySet.Bump "python"
             , GithubActions.Step::{
               , name = Some "Bump and push"
               , run = Some
