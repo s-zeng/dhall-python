@@ -14,15 +14,11 @@ let helpers =
 let constants =
       { latestPython = "3.10"
       , matrixPython = helpers.ghVar "matrix.python-version"
-      , supportedManylinux = "2_24"
-      , supportedLinuxArch = "x86_64"
+      , manylinuxContainer = "quay.io/pypa/manylinux_2_24_x86_64"
       , supportedPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
       , releaseCreatedCondition =
           "github.event_name == 'release' && github.event.action == 'created'"
       }
-
-let manylinuxContainer =
-      "quay.io/pypa/manylinux_${constants.supportedManylinux}_${constants.supportedLinuxArch}"
 
 let enums =
       { DependencySet = < Full | Lint | Bump >
@@ -85,15 +81,29 @@ let builder =
                 }
                 os
 
+        let unixShared =
+              { interpreterArg =
+                  " --interpreter python${constants.matrixPython}"
+              , strategy = Some GithubActions.Strategy::{
+                , fail-fast = Some True
+                , matrix = toMap { python-version = constants.supportedPythons }
+                }
+              , installer = GithubActions.Step::{
+                , name = Some "Install wheels"
+                , run = Some
+                    "${pythonExec} -m pip install target/wheels/dhall*.whl"
+                }
+              }
+
         let container =
               merge
-                { Linux = Some manylinuxContainer
+                { Linux = Some constants.manylinuxContainer
                 , Mac = None Text
                 , Windows = None Text
                 }
                 os
 
-        let runningOs =
+        let runs-on =
               merge
                 { Linux = GithubActions.RunsOn.Type.ubuntu-latest
                 , Mac = GithubActions.RunsOn.Type.macos-latest
@@ -111,14 +121,34 @@ let builder =
 
         let interpreterArg =
               merge
-                { Linux = " --interpreter python${constants.matrixPython}"
-                , Mac = " --interpreter python${constants.matrixPython}"
+                { Linux = unixShared.interpreterArg
+                , Mac = unixShared.interpreterArg
                 , Windows = ""
                 }
                 os
 
         let osName =
               merge { Linux = "Linux", Mac = "Mac", Windows = "Windows" } os
+
+        let installer =
+              merge
+                { Linux = unixShared.installer
+                , Mac = unixShared.installer
+                , Windows = GithubActions.Step::{
+                  , name = Some "Install wheels"
+                  , run = Some
+                      "${pythonExec} -m pip install --find-links=target\\wheels dhall"
+                  }
+                }
+                os
+
+        let strategy =
+              merge
+                { Linux = unixShared.strategy
+                , Mac = unixShared.strategy
+                , Windows = None GithubActions.Strategy.Type
+                }
+                os
 
         let mainBuilder =
               \(release : Bool) ->
@@ -143,43 +173,12 @@ let builder =
                     )
                 }
 
-        let installer =
-              merge
-                { Linux = GithubActions.Step::{
-                  , name = Some "Install wheels"
-                  , run = Some
-                      "${pythonExec} -m pip install target/wheels/dhall*.whl"
-                  }
-                , Mac = GithubActions.Step::{
-                  , name = Some "Install wheels"
-                  , run = Some
-                      "${pythonExec} -m pip install target/wheels/dhall*.whl"
-                  }
-                , Windows = GithubActions.Step::{
-                  , name = Some "Install wheels"
-                  , run = Some
-                      "${pythonExec} -m pip install --find-links=target\\wheels dhall"
-                  }
-                }
-                os
-
-        let matrix =
-              merge
-                { Linux = toMap { python-version = constants.supportedPythons }
-                , Mac = toMap { python-version = constants.supportedPythons }
-                , Windows = [] : Prelude.Map.Type Text (List Text)
-                }
-                os
-
         in  GithubActions.Job::{
             , name = Some "Build/test/publish ${osName}"
-            , runs-on = runningOs
+            , runs-on
             , container
             , needs = Some [ "lint" ]
-            , strategy = Some GithubActions.Strategy::{
-              , fail-fast = Some True
-              , matrix
-              }
+            , strategy
             , steps =
                   pythonSetup
                 # [ setup.rust
