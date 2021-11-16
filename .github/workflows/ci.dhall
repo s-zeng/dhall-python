@@ -105,7 +105,7 @@ let builder =
               merge
                 { Linux = [] : List GithubActions.Step.Type
                 , Mac = [ setup.python constants.matrixPython ]
-                , Windows = [ setup.python constants.matrixPython ]
+                , Windows = [] : List GithubActions.Step.Type
                 }
                 os
 
@@ -163,6 +163,14 @@ let builder =
                 }
                 os
 
+        let matrix =
+              merge
+                { Linux = toMap { python-version = constants.supportedPythons }
+                , Mac = toMap { python-version = constants.supportedPythons }
+                , Windows = [] : Prelude.Map.Type Text (List Text)
+                }
+                os
+
         in  GithubActions.Job::{
             , name = Some "Build/test/publish ${osName}"
             , runs-on = runningOs
@@ -170,7 +178,7 @@ let builder =
             , needs = Some [ "lint" ]
             , strategy = Some GithubActions.Strategy::{
               , fail-fast = Some True
-              , matrix = toMap { python-version = constants.supportedPythons }
+              , matrix
               }
             , steps =
                   pythonSetup
