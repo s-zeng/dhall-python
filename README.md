@@ -41,12 +41,13 @@ Supports the following:
 - Operating Systems
   - Windows
   - Mac OS
-  - Linux (with libssl.so.1 and libcrypto.so.1)
+  - Linux (manylinux_2_24_x86_64)
 - Python versions
   - 3.6
   - 3.7
   - 3.8
   - 3.9
+  - 3.10
 
 dhall-python implements a similar API to Python's [json
 module](https://docs.python.org/3/library/json.html):

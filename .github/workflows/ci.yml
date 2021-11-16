@@ -1,38 +1,4 @@
 jobs:
-  build:
-    if: "github.event.name != 'release'"
-    name: Build and test wheels
-    needs:
-      - lint
-    runs-on: "${{ matrix.os }}"
-    steps:
-      - uses: "actions/checkout@v2"
-      - name: "Setup python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@v2"
-        with:
-          python-version: "${{ matrix.python-version }}"
-      - name: Install Rust
-        uses: "actions-rs/toolchain@v1"
-        with:
-          override: 'true'
-          toolchain: stable
-      - name: Install dependencies
-        run: "python -m pip install --upgrade pip\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
-      - name: Maturin build and pytest
-        run: "poetry run maturin build\npoetry run maturin develop\npoetry run pytest tests"
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-        python-version:
-          - '3.6'
-          - '3.7'
-          - '3.8'
-          - '3.9'
-          - '3.10'
   bump:
     if: "github.event_name == 'release' && github.event.action == 'created'"
     name: Bump minor version
@@ -74,11 +40,130 @@ jobs:
         run: "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml\ndiff expected.yml .github/workflows/ci.yml"
       - name: Check lint
         run: "isort . --check --diff\nblack . --check"
-  publish:
-    if: "github.event_name == 'release' && github.event.action == 'created'"
-    name: Publish wheels to PyPI
+  macWindowsBuild:
+    if: "github.event.name != 'release'"
+    name: Build/test mac/windows wheels
     needs:
-      - build
+      - lint
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: "actions/checkout@v2"
+      - name: "Setup python ${{ matrix.python-version }}"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Install Rust
+        uses: "actions-rs/toolchain@v1"
+        with:
+          override: 'true'
+          toolchain: stable
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
+      - name: Maturin build and pytest
+        run: "poetry run maturin build\npoetry run maturin develop\npoetry run pytest tests"
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+  macWindowsPublish:
+    if: "github.event_name == 'release' && github.event.action == 'created'"
+    name: Publish mac/windows wheels to PyPI
+    needs:
+      - macWindowsBuild
+      - manylinuxBuild
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: "actions/checkout@v2"
+      - name: "Setup python ${{ matrix.python-version }}"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Install Rust
+        uses: "actions-rs/toolchain@v1"
+        with:
+          override: 'true'
+          toolchain: stable
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
+      - name: Build python package
+        run: "poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}"
+      - if: "matrix.os == 'windows-latest'"
+        name: Install wheels
+        run: "pip install --find-links=target\\wheels dhall"
+      - if: "matrix.os != 'windows-latest'"
+        name: Install wheels
+        run: "pip install target/wheels/dhall*.whl"
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        if: "startsWith(github.ref, 'refs/tags/')"
+        name: Release
+        uses: "softprops/action-gh-release@v1"
+        with:
+          files: "target/wheels/dhall*.whl"
+      - env:
+          MATURIN_PASSWORD: "${{ secrets.PYPI }}"
+        name: PyPI publish
+        run: "poetry run maturin publish --username __token__ --interpreter python${{ matrix.python_version }}"
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+  manylinuxBuild:
+    container: quay.io/pypa/manylinux_2_24_x86_64
+    if: "github.event.name != 'release'"
+    name: Build/test manylinux wheels
+    needs:
+      - lint
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: "actions/checkout@v2"
+      - name: "Setup python ${{ matrix.python-version }}"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Install Rust
+        uses: "actions-rs/toolchain@v1"
+        with:
+          override: 'true'
+          toolchain: stable
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
+      - name: Maturin build and pytest
+        run: "poetry run maturin build\npoetry run maturin develop\npoetry run pytest tests"
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+  manylinuxPublisher:
+    container: quay.io/pypa/manylinux_2_24_x86_64
+    if: "github.event_name == 'release' && github.event.action == 'created'"
+    name: Publish manylinux wheels to PyPI
+    needs:
+      - macWindowsBuild
+      - manylinuxBuild
     runs-on: "${{ matrix.os }}"
     steps:
       - uses: "actions/checkout@v2"
@@ -117,8 +202,6 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
-          - windows-latest
         python-version:
           - '3.6'
           - '3.7'
