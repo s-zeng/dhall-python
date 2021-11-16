@@ -6,11 +6,28 @@ let Prelude =
       https://prelude.dhall-lang.org/v21.0.0/package.dhall
         sha256:46c48bba5eee7807a872bbf6c3cb6ee6c2ec9498de3543c5dcc7dd950e43999d
 
-let unlines = Prelude.Text.concatSep "\n"
+let helpers =
+      { unlines = Prelude.Text.concatSep "\n"
+      , ghVar = \(varName : Text) -> "\${{ ${varName} }}"
+      }
 
-let ghVar
-    : Text -> Text
-    = \(varName : Text) -> "\${{ ${varName} }}"
+let constants =
+      { latestPython = "3.10"
+      , matrixPython = helpers.ghVar "matrix.python-version"
+      , supportedManylinux = "2_24"
+      , supportedLinuxArch = "x86_64"
+      , supportedPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
+      , releaseCreatedCondition =
+          "github.event_name == 'release' && github.event.action == 'created'"
+      }
+
+let manylinuxContainer =
+      "quay.io/pypa/manylinux_${constants.supportedManylinux}_${constants.supportedLinuxArch}"
+
+let enums =
+      { DependencySet = < Full | Lint | Bump >
+      , SupportedOs = < Windows | Mac | Linux >
+      }
 
 let setup =
       { dhall = GithubActions.Step::{
@@ -32,10 +49,8 @@ let setup =
         }
       }
 
-let DependencySet = < Full | Lint | Bump >
-
 let installDeps =
-      \(installType : DependencySet) ->
+      \(installType : enums.DependencySet) ->
       \(pythonExec : Text) ->
         let fullDeps =
               [ "${pythonExec} -m pip install poetry"
@@ -55,34 +70,16 @@ let installDeps =
         in  GithubActions.Step::{
             , name = Some "Install dependencies"
             , run = Some
-                ( unlines
+                ( helpers.unlines
                     ([ "${pythonExec} -m pip install --upgrade pip" ] # deps)
                 )
             }
 
-let latestPython = "3.10"
-
-let matrixPython = ghVar "matrix.python-version"
-
-let supportedManylinux = "2_24"
-
-let supportedLinuxArch = "x86_64"
-
-let manylinuxContainer =
-      "quay.io/pypa/manylinux_${supportedManylinux}_${supportedLinuxArch}"
-
-let supportPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
-
-let SupportedOs = < Windows | Mac | Linux >
-
-let releaseCreatedCondition =
-      "github.event_name == 'release' && github.event.action == 'created'"
-
 let builder =
-      \(os : SupportedOs) ->
+      \(os : enums.SupportedOs) ->
         let pythonExec =
               merge
-                { Linux = "python${matrixPython}"
+                { Linux = "python${constants.matrixPython}"
                 , Mac = "python"
                 , Windows = "python"
                 }
@@ -107,15 +104,15 @@ let builder =
         let pythonSetup =
               merge
                 { Linux = [] : List GithubActions.Step.Type
-                , Mac = [ setup.python matrixPython ]
-                , Windows = [ setup.python matrixPython ]
+                , Mac = [ setup.python constants.matrixPython ]
+                , Windows = [ setup.python constants.matrixPython ]
                 }
                 os
 
         let interpreterArg =
               merge
-                { Linux = " --interpreter python${matrixPython}"
-                , Mac = " --interpreter python${matrixPython}"
+                { Linux = " --interpreter python${constants.matrixPython}"
+                , Mac = " --interpreter python${constants.matrixPython}"
                 , Windows = ""
                 }
                 os
@@ -126,14 +123,17 @@ let builder =
         let mainBuilder =
               \(release : Bool) ->
                 GithubActions.Step::{
-                , name = Some "Build and test python package"
+                , name = Some
+                    "Build and test python package${if    release
+                                                    then  " (Release)"
+                                                    else  ""}"
                 , `if` = Some
                     ( if    release
-                      then  releaseCreatedCondition
-                      else  "!(${releaseCreatedCondition})"
+                      then  constants.releaseCreatedCondition
+                      else  "!(${constants.releaseCreatedCondition})"
                     )
                 , run = Some
-                    ( unlines
+                    ( helpers.unlines
                         [ "${pythonExec} -m poetry run maturin build ${if    release
                                                                        then  "--release"
                                                                        else  ""} --strip${interpreterArg}"
@@ -170,13 +170,13 @@ let builder =
             , needs = Some [ "lint" ]
             , strategy = Some GithubActions.Strategy::{
               , fail-fast = Some True
-              , matrix = toMap { python-version = supportPythons }
+              , matrix = toMap { python-version = constants.supportedPythons }
               }
             , steps =
                   pythonSetup
                 # [ setup.rust
                   , GithubActions.steps.actions/checkout
-                  , installDeps DependencySet.Full pythonExec
+                  , installDeps enums.DependencySet.Full pythonExec
                   , mainBuilder False
                   , mainBuilder True
                   , installer
@@ -184,18 +184,24 @@ let builder =
                     , name = Some "Release"
                     , uses = Some "softprops/action-gh-release@v1"
                     , `if` = Some
-                        "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
+                        "startsWith(github.ref, 'refs/tags/') && ${constants.releaseCreatedCondition}"
                     , `with` = Some
                         (toMap { files = "target/wheels/dhall*.whl" })
                     , env = Some
-                        (toMap { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" })
+                        ( toMap
+                            { GITHUB_TOKEN =
+                                helpers.ghVar "secrets.GITHUB_TOKEN"
+                            }
+                        )
                     }
                   , GithubActions.Step::{
                     , name = Some "PyPI publish"
                     , `if` = Some
-                        "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
+                        "startsWith(github.ref, 'refs/tags/') && ${constants.releaseCreatedCondition}"
                     , env = Some
-                        (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
+                        ( toMap
+                            { MATURIN_PASSWORD = helpers.ghVar "secrets.PYPI" }
+                        )
                     , run = Some
                         "${pythonExec} -m poetry run maturin publish --username __token__${interpreterArg}"
                     }
@@ -220,43 +226,45 @@ in  GithubActions.Workflow::{
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
             [ GithubActions.steps.actions/checkout
-            , setup.python latestPython
             , setup.dhall
-            , installDeps DependencySet.Lint "python"
             , GithubActions.Step::{
               , name = Some "Check github actions workflow"
               , `if` = Some "github.event.name != 'pull_request'"
               , run = Some
-                  ( unlines
+                  ( helpers.unlines
                       [ "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml"
                       , "diff expected.yml .github/workflows/ci.yml"
                       ]
                   )
               }
+            , setup.python constants.latestPython
+            , installDeps enums.DependencySet.Lint "python"
             , GithubActions.Step::{
               , name = Some "Check lint"
               , run = Some
-                  (unlines [ "isort . --check --diff", "black . --check" ])
+                  ( helpers.unlines
+                      [ "isort . --check --diff", "black . --check" ]
+                  )
               }
             ]
           }
-        , macBuild = builder SupportedOs.Mac
-        , windowsBuild = builder SupportedOs.Windows
-        , linuxBuild = builder SupportedOs.Linux
+        , macBuild = builder enums.SupportedOs.Mac
+        , windowsBuild = builder enums.SupportedOs.Windows
+        , linuxBuild = builder enums.SupportedOs.Linux
         , bump = GithubActions.Job::{
           , name = Some "Bump minor version"
           , needs = Some [ "lint" ]
-          , `if` = Some releaseCreatedCondition
+          , `if` = Some constants.releaseCreatedCondition
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
             [ GithubActions.steps.actions/checkout
-            , setup.python latestPython
+            , setup.python constants.latestPython
             , setup.rust
-            , installDeps DependencySet.Bump "python"
+            , installDeps enums.DependencySet.Bump "python"
             , GithubActions.Step::{
               , name = Some "Bump and push"
               , run = Some
-                  ( unlines
+                  ( helpers.unlines
                       [ "cargo bump patch"
                       , "poetry version patch"
                       , "git config user.name github-actions"

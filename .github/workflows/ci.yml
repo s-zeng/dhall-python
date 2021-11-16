@@ -25,19 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: "actions/checkout@v2"
-      - name: Setup python 3.10
-        uses: "actions/setup-python@v2"
-        with:
-          python-version: '3.10'
       - name: Install dhall
         uses: "dhall-lang/setup-dhall@v4"
         with:
           version: '1.40.1'
-      - name: Install dependencies
-        run: "python -m pip install --upgrade pip\npython -m pip install black isort autoflake"
       - if: "github.event.name != 'pull_request'"
         name: Check github actions workflow
         run: "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml\ndiff expected.yml .github/workflows/ci.yml"
+      - name: Setup python 3.10
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npython -m pip install black isort autoflake"
       - name: Check lint
         run: "isort . --check --diff\nblack . --check"
   linuxBuild:
@@ -59,7 +59,7 @@ jobs:
         name: Build and test python package
         run: "python${{ matrix.python-version }} -m poetry run maturin build  --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
       - if: "github.event_name == 'release' && github.event.action == 'created'"
-        name: Build and test python package
+        name: "Build and test python package (Release)"
         run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
       - name: Install wheels
         run: "python${{ matrix.python-version }} -m pip install target/wheels/dhall*.whl"
@@ -106,7 +106,7 @@ jobs:
         name: Build and test python package
         run: "python -m poetry run maturin build  --strip --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
       - if: "github.event_name == 'release' && github.event.action == 'created'"
-        name: Build and test python package
+        name: "Build and test python package (Release)"
         run: "python -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
       - name: Install wheels
         run: "python -m pip install target/wheels/dhall*.whl"
@@ -153,7 +153,7 @@ jobs:
         name: Build and test python package
         run: "python -m poetry run maturin build  --strip\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
       - if: "github.event_name == 'release' && github.event.action == 'created'"
-        name: Build and test python package
+        name: "Build and test python package (Release)"
         run: "python -m poetry run maturin build --release --strip\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
       - name: Install wheels
         run: "python -m pip install --find-links=target\\wheels dhall"
