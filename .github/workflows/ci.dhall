@@ -38,15 +38,15 @@ let installDeps =
       \(installType : DependencySet) ->
       \(pythonExec : Text) ->
         let fullDeps =
-              [ "pythonExec -m pip install poetry"
+              [ "${pythonExec} -m pip install poetry"
               , "touch Cargo.toml.orig"
-              , "pythonExec -m poetry install"
+              , "${pythonExec} -m poetry install"
               ]
 
         let deps =
               merge
                 { Full = fullDeps
-                , Lint = [ "pythonExec -m pip install black isort autoflake" ]
+                , Lint = [ "${pythonExec} -m pip install black isort autoflake" ]
                 , Bump = [ "cargo install cargo-bump" ] # fullDeps
                 }
                 installType
@@ -54,7 +54,7 @@ let installDeps =
         in  GithubActions.Step::{
             , name = Some "Install dependencies"
             , run = Some
-                (unlines ([ "pythonExec -m pip install --upgrade pip" ] # deps))
+                (unlines ([ "${pythonExec} -m pip install --upgrade pip" ] # deps))
             }
 
 let latestPython = "3.10"

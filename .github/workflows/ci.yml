@@ -18,7 +18,7 @@ jobs:
           override: 'true'
           toolchain: stable
       - name: Install dependencies
-        run: "pythonExec -m pip install --upgrade pip\ncargo install cargo-bump\npythonExec -m pip install poetry\ntouch Cargo.toml.orig\npythonExec -m poetry install"
+        run: "python -m pip install --upgrade pip\ncargo install cargo-bump\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
       - name: Bump and push
         run: "cargo bump patch\npoetry version patch\ngit config user.name github-actions\ngit config user.email github-actions@github.com\ngit add Cargo.toml pyproject.toml\ngit commit -m \"Bump version (automatic commit)\"\ngit push"
   lint:
@@ -35,7 +35,7 @@ jobs:
         with:
           version: '1.40.1'
       - name: Install dependencies
-        run: "pythonExec -m pip install --upgrade pip\npythonExec -m pip install black isort autoflake"
+        run: "python -m pip install --upgrade pip\npython -m pip install black isort autoflake"
       - if: "github.event.name != 'pull_request'"
         name: Check github actions workflow
         run: "dhall-to-yaml < .github/workflows/ci.dhall > expected.yml\ndiff expected.yml .github/workflows/ci.yml"
@@ -59,7 +59,7 @@ jobs:
           override: 'true'
           toolchain: stable
       - name: Install dependencies
-        run: "pythonExec -m pip install --upgrade pip\npythonExec -m pip install poetry\ntouch Cargo.toml.orig\npythonExec -m poetry install"
+        run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
       - name: Maturin build and pytest
         run: "python -m poetry run maturin build --interpreter python${{ matrix.python-version }}\npython -m poetry run maturin develop\npython -m poetry run pytest tests"
     strategy:
@@ -93,7 +93,7 @@ jobs:
           override: 'true'
           toolchain: stable
       - name: Install dependencies
-        run: "pythonExec -m pip install --upgrade pip\npythonExec -m pip install poetry\ntouch Cargo.toml.orig\npythonExec -m poetry install"
+        run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
       - name: Build python package
         run: "python -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}"
       - if: "matrix.os == 'windows-latest'"
@@ -140,7 +140,7 @@ jobs:
           override: 'true'
           toolchain: stable
       - name: Install dependencies
-        run: "pythonExec -m pip install --upgrade pip\npythonExec -m pip install poetry\ntouch Cargo.toml.orig\npythonExec -m poetry install"
+        run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
       - name: Maturin build and pytest
         run: "python${{ matrix.python-version }} -m poetry run maturin build --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
     strategy:
@@ -170,7 +170,7 @@ jobs:
           override: 'true'
           toolchain: stable
       - name: Install dependencies
-        run: "pythonExec -m pip install --upgrade pip\npythonExec -m pip install poetry\ntouch Cargo.toml.orig\npythonExec -m poetry install"
+        run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
       - name: Build python package
         run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}"
       - if: "matrix.os == 'windows-latest'"
