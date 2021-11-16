@@ -145,12 +145,12 @@ in  GithubActions.Workflow::{
               }
             , GithubActions.Step::{
               , name = Some "Install wheels"
-              , `if` = Some "matrix.os == 'windows-latest"
+              , `if` = Some "matrix.os == 'windows-latest'"
               , run = Some "pip install --find-links=target\\wheels dhall"
               }
             , GithubActions.Step::{
               , name = Some "Install wheels"
-              , `if` = Some "matrix.os != 'windows-latest"
+              , `if` = Some "matrix.os != 'windows-latest'"
               , run = Some "pip install target/wheels/dhall*.whl"
               }
             , GithubActions.Step::{
