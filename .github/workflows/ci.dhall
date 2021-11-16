@@ -156,7 +156,7 @@ in  GithubActions.Workflow::{
             , GithubActions.Step::{
               , name = Some "Release"
               , uses = Some "softprops/action-gh-release@v1"
-              , `if` = Some "startsWith(github.ref, 'refs/tags'"
+              , `if` = Some "startsWith(github.ref, 'refs/tags/'"
               , `with` = Some (toMap { files = "target/wheels/dhall*.whl" })
               , env = Some
                   (toMap { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" })
