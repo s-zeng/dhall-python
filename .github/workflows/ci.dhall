@@ -89,7 +89,7 @@ in  GithubActions.Workflow::{
               , run = Some
                   ( Prelude.Text.concatSep
                       "\n"
-                      [ "isort . --check --diff -rc", "black . -- check" ]
+                      [ "isort . --check --diff", "black . -- check" ]
                   )
               }
             ]
