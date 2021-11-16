@@ -257,7 +257,8 @@ in  GithubActions.Workflow::{
           , `if` = Some constants.releaseCreatedCondition
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
-            [ GithubActions.steps.actions/checkout
+            [     GithubActions.steps.actions/checkout
+              //  { `with` = Some (toMap { ref = "master" }) }
             , setup.python constants.latestPython
             , setup.rust
             , installDeps enums.DependencySet.Bump "python"
