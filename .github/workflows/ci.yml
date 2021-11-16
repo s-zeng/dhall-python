@@ -1,181 +1,133 @@
-name: CI
-
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-  release:
-    types: [created]
-  schedule:
-    # Runs every Thursday at 20:23 GMT to avoid bit rot
-    - cron: "20 23 * * 6"
-
 jobs:
-  lint:
-    if: github.event_name != 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2.4.0
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install black isort autoflake
-
-      - name: Sort imports
-        run: isort . --check --diff -rc
-
-      - name: black
-        run: black . --check
-
   build:
-    runs-on: ${{ matrix.os }}
-    needs: lint
-    if: github.event_name != 'release'
+    if: "github.event.name != 'release'"
+    name: Build and test wheels
+    needs:
+      - lint
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: "actions/checkout@v2"
+      - name: "Setup python ${{ matrix.python-version }}"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Install Rust
+        uses: "actions-rs/toolchain@v1"
+        with:
+          override: 'true'
+          toolchain: stable
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
+      - name: Maturin build and pytest
+        run: "poetry run maturin build\npoetry run maturin develop\npoetry run pytest tests"
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
-        os: [ubuntu-18.04, macos-latest, windows-latest]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2.4.0
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          touch Cargo.toml.orig
-          poetry install
-
-      - name: Install rust
-        uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Build Python package
-        run: poetry run maturin build
-
-      - name: Build Python package
-        run: poetry run maturin develop
-
-      - name: pytest
-        run: poetry run pytest tests
-
-  python-publish:
-    if: github.event_name == 'release' && github.event.action == 'created'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
-        os: [ubuntu-18.04, macos-latest, windows-latest]
-
-    steps:
-      - uses: actions/checkout@v2.4.0
-
-      - uses: actions/setup-python@v2.2.2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install rust
-        uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          touch Cargo.toml.orig
-          poetry install
-
-      - name: Build Python package
-        run: poetry run maturin build --release --strip --interpreter python${{matrix.python_version}}
-
-      - name: List wheels
-        if: matrix.os == 'windows-latest'
-        run: dir target\wheels\
-
-      - name: List wheels
-        if:  matrix.os != 'windows-latest'
-        run: find ./target/wheels/
-
-      # Note: Windows doesn't support glob
-      # https://stackoverflow.com/a/52481267/270334
-      - name: Install wheels
-        if:  matrix.os == 'windows-latest'
-        run: pip install --find-links=target\wheels dhall
-
-      - name: Install wheels
-        if:  matrix.os != 'windows-latest'
-        run: pip install target/wheels/dhall*.whl
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: target/wheels/dhall*.whl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: PyPi publish
-        env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI }}
-        run: poetry run maturin publish --no-sdist --username __token__ --interpreter python${{matrix.python_version}}
-
-
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
   bump:
-    if: github.event_name == 'release' && github.event.action == 'created'
-    needs: python-publish
+    if: "github.event_name == 'release' && github.event.action == 'created'"
+    name: Bump minor version
+    needs:
+      - publish
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: "actions/checkout@v2"
+      - name: Setup python 3.10
+        uses: "actions/setup-python@v2"
         with:
-          ref: master
-
-      - uses: actions/setup-python@v2.2.2
+          python-version: '3.10'
+      - name: Install Rust
+        uses: "actions-rs/toolchain@v1"
         with:
-          python-version: "3.10"
-
-      - name: Install rust
-        uses: actions-rs/toolchain@v1.0.7
-        with:
+          override: 'true'
           toolchain: stable
-          override: true
-
       - name: Install dependencies
-        run: |
-          cargo install cargo-bump
-          python -m pip install --upgrade pip
-          pip install poetry
-          touch Cargo.toml.orig
-          poetry install
-
-      - name: Bump version
-        run: |
-          cargo bump patch
-          poetry version patch
-
-      - name: Push
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add Cargo.toml pyproject.toml
-          git commit -m "Bump version (automatic commit)"
-          git push
+        run: "python -m pip install --upgrade pip\ncargo install cargo-bump\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
+      - name: Bump and push
+        run: "cargo bump patch\npoetry version patch\ngit config user.name github-actions\ngit config user.email github-actions@github.com\ngit add Cargo.toml pyproject.toml\ngit commit -m \"Bump version (automatic commit)\"\ngit push"
+  lint:
+    name: Lint check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: "actions/checkout@v2"
+      - name: Setup python 3.10
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npip install black isort autoflake"
+      - name: Check lint
+        run: "isort . --check --diff -rc\nblack . -- check"
+  publish:
+    if: "github.event_name == 'release' && github.event.action == 'created'"
+    name: Publish wheels to PyPI
+    needs:
+      - build
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: "actions/checkout@v2"
+      - name: "Setup python ${{ matrix.python-version }}"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Install Rust
+        uses: "actions-rs/toolchain@v1"
+        with:
+          override: 'true'
+          toolchain: stable
+      - name: Install dependencies
+        run: "python -m pip install --upgrade pip\npip install poetry\ntouch Cargo.toml.orig\npoetry install"
+      - name: Build python package
+        run: "poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}"
+      - if: "matrix.os == 'windows-latest"
+        name: Install wheels
+        run: "pip install --find-links=target\\wheels dhall"
+      - if: "matrix.os != 'windows-latest"
+        name: Install wheels
+        run: "pip install target/wheels/dhall*.whl"
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        if: "startsWith(github.ref, 'refs/tags'"
+        name: Release
+        uses: "softprops/action-gh-release@v1"
+        with:
+          files: "target/wheels/dhall*.whl"
+      - env:
+          MATURIN_PASSWORD: "${{ secrets.PYPI }}"
+        name: PyPI publish
+        run: "poetry run maturin publish --username __token__ --interpreter python${{ matrix.python_version }}"
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+name: CI
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  release:
+    types:
+      - created
+  schedule:
+    - cron: "20 23 * * 6"
