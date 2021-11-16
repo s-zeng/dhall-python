@@ -71,119 +71,87 @@ let supportedLinuxArch = "x86_64"
 let manylinuxContainer =
       "quay.io/pypa/manylinux_${supportedManylinux}_${supportedLinuxArch}"
 
-let supportedPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
+let supportPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
 
 let supportedOSs = [ "macos-latest", "windows-latest" ]
 
 let releaseCreatedCondition =
       "github.event_name == 'release' && github.event.action == 'created'"
 
-let publisher =
-      \(manylinux : Bool) ->
-        let pythonExecs =
-              if    manylinux
-              then  Prelude.List.map
-                      Text
-                      Text
-                      (\(ver : Text) -> "python" ++ ver)
-                      supportedPythons
-              else  [ "python" ]
-
-        let dockerContainer =
-              if manylinux then Some manylinuxContainer else None Text
-
-        let runningOs =
-              if    manylinux
-              then  GithubActions.RunsOn.Type.ubuntu-latest
-              else  GithubActions.RunsOn.Type.`${{ matrix.os }}`
-
-        let strategy =
-              if    manylinux
-              then  None GithubActions.Strategy.Type
-              else  Some
-                      GithubActions.Strategy::{
-                      , fail-fast = Some True
-                      , matrix = toMap
-                          { os = supportedOSs
-                          , python-version = supportedPythons
-                          }
-                      }
-
-        let pythonSetup =
-              if    manylinux
-              then  [] : List GithubActions.Step.Type
-              else  [ setup.python matrixPython ]
-
-        let makeCoreSteps =
-              \(pythonExec : Text) ->
-                let maturinInterpreter =
-                      if manylinux then pythonExec else "python" ++ matrixPython
-
-                in  [ installDeps DependencySet.Full pythonExec
-                    , GithubActions.Step::{
-                      , name = Some "Build and test python package"
-                      , run = Some
-                          ( unlines
-                              [ "${pythonExec} -m poetry run maturin build --release --strip --interpreter ${maturinInterpreter}"
-                              , "${pythonExec} -m poetry run maturin develop"
-                              , "${pythonExec} -m poetry run pytest tests"
-                              ]
-                          )
-                      }
-                    , GithubActions.Step::{
-                      , name = Some "Install wheels"
-                      , `if` = Some "matrix.os == 'windows-latest'"
-                      , run = Some
-                          "${pythonExec} -m pip install --find-links=target\\wheels dhall"
-                      }
-                    , GithubActions.Step::{
-                      , name = Some "Install wheels"
-                      , `if` = Some "matrix.os != 'windows-latest'"
-                      , run = Some
-                          "${pythonExec} -m pip install target/wheels/dhall*.whl"
-                      }
-                    , GithubActions.Step::{
-                      , name = Some "PyPI publish"
-                      , `if` = Some
-                          "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
-                      , env = Some
-                          (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
-                      , run = Some
-                          "${pythonExec} -m poetry run maturin publish --username __token__ --interpreter ${maturinInterpreter}"
-                      }
-                    ]
-
-        in  GithubActions.Job::{
-            , name = Some "Build/test/publish"
-            , container = dockerContainer
-            , runs-on = runningOs
-            , needs = Some [ "lint" ]
-            , strategy
-            , steps =
-                Prelude.List.concat
-                  GithubActions.Step.Type
-                  [ [ GithubActions.steps.actions/checkout, setup.rust ]
-                  , pythonSetup
-                  , Prelude.List.concatMap
-                      Text
-                      GithubActions.Step.Type
-                      makeCoreSteps
-                      pythonExecs
-                  , [ GithubActions.Step::{
-                      , name = Some "Release"
-                      , uses = Some "softprops/action-gh-release@v1"
-                      , `if` = Some
-                          "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
-                      , `with` = Some
-                          (toMap { files = "target/wheels/dhall*.whl" })
-                      , env = Some
-                          ( toMap
-                              { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" }
-                          )
-                      }
-                    ]
-                  ]
+let manylinuxify
+    : GithubActions.Job.Type -> GithubActions.Job.Type
+    = \(job : GithubActions.Job.Type) ->
+            job
+        //  { name =
+                Prelude.Optional.map
+                  Text
+                  Text
+                  (\(n : Text) -> n ++ " (manylinux)")
+                  job.name
+            , container = Some manylinuxContainer
+            , strategy = Some GithubActions.Strategy::{
+              , fail-fast = Some True
+              , matrix = toMap
+                  { os = [ "ubuntu-latest" ], python-version = supportPythons }
+              }
+            , steps = Prelude.List.drop 1 GithubActions.Step.Type job.steps
             }
+
+let publisher =
+      \(pythonExec : Text) ->
+        GithubActions.Job::{
+        , name = Some "Build/test/publish"
+        , runs-on = GithubActions.RunsOn.Type.`${{ matrix.os }}`
+        , needs = Some [ "lint" ]
+        , strategy = Some GithubActions.Strategy::{
+          , fail-fast = Some True
+          , matrix = toMap
+              { os = supportedOSs, python-version = supportPythons }
+          }
+        , steps =
+          [ setup.python matrixPython
+          , setup.rust
+          , GithubActions.steps.actions/checkout
+          , installDeps DependencySet.Full pythonExec
+          , GithubActions.Step::{
+            , name = Some "Build and test python package"
+            , run = Some
+                ( unlines
+                    [ "${pythonExec} -m poetry run maturin build --release --strip"
+                    , "${pythonExec} -m poetry run maturin develop"
+                    , "${pythonExec} -m poetry run pytest tests"
+                    ]
+                )
+            }
+          , GithubActions.Step::{
+            , name = Some "Install wheels"
+            , `if` = Some "matrix.os == 'windows-latest'"
+            , run = Some
+                "${pythonExec} -m pip install --find-links=target\\wheels dhall"
+            }
+          , GithubActions.Step::{
+            , name = Some "Install wheels"
+            , `if` = Some "matrix.os != 'windows-latest'"
+            , run = Some "${pythonExec} -m pip install target/wheels/dhall*.whl"
+            }
+          , GithubActions.Step::{
+            , name = Some "Release"
+            , uses = Some "softprops/action-gh-release@v1"
+            , `if` = Some
+                "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
+            , `with` = Some (toMap { files = "target/wheels/dhall*.whl" })
+            , env = Some (toMap { GITHUB_TOKEN = ghVar "secrets.GITHUB_TOKEN" })
+            }
+          , GithubActions.Step::{
+            , name = Some "PyPI publish"
+            , `if` = Some
+                "startsWith(github.ref, 'refs/tags/') && ${releaseCreatedCondition}"
+            , env = Some (toMap { MATURIN_PASSWORD = ghVar "secrets.PYPI" })
+            , run = Some
+                "${pythonExec} -m poetry run maturin publish --username __token__"
+            }
+          ]
+        }
 
 in  GithubActions.Workflow::{
     , name = "CI"
@@ -223,8 +191,8 @@ in  GithubActions.Workflow::{
               }
             ]
           }
-        , macWindowsPublish = publisher False
-        , manylinuxPublish = publisher True
+        , macWindowsPublish = publisher "python"
+        , manylinuxPublish = manylinuxify (publisher "python${matrixPython}")
         , bump = GithubActions.Job::{
           , name = Some "Bump minor version"
           , needs = Some [ "macWindowsPublish", "manylinuxPublish" ]
