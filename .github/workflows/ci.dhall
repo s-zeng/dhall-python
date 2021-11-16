@@ -91,6 +91,9 @@ let manylinuxify
               , matrix = toMap
                   { os = [ "ubuntu-latest" ], python-version = supportPythons }
               }
+            , steps =
+                  Prelude.List.take 1 GithubActions.Step.Type job.steps
+                # Prelude.List.drop 2 GithubActions.Step.Type job.steps
             }
 
 let builder =

@@ -134,10 +134,6 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - uses: "actions/checkout@v2"
-      - name: "Setup python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@v2"
-        with:
-          python-version: "${{ matrix.python-version }}"
       - name: Install Rust
         uses: "actions-rs/toolchain@v1"
         with:
@@ -168,10 +164,6 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - uses: "actions/checkout@v2"
-      - name: "Setup python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@v2"
-        with:
-          python-version: "${{ matrix.python-version }}"
       - name: Install Rust
         uses: "actions-rs/toolchain@v1"
         with:
