@@ -7,11 +7,11 @@ publish: ## Publish the binding
 
 .PHONY: build
 build: dev-packages ## Builds Rust code and dhall-python Python modules
-	poetry run maturin build --manylinux 2014 --skip-auditwheel --rustc-extra-args="-Wall"
+	poetry run maturin build --rustc-extra-args="-Wall"
 
 .PHONY: build-release
 build-release: dev-packages ## Build dhall-python module in release mode
-	poetry run maturin build --manylinux 2014 --skip-auditwheel --release
+	poetry run maturin build --release
 
 .PHONY: install
 install: dev-packages ## Install dhall-python module into current virtualenv
