@@ -55,11 +55,11 @@ let osSpecificConfig =
       }
 
 let mainBuilder =
-      \(os : enums.SupportedOs) ->
-      \(release : enums.ReleaseType) ->
+      λ(os : enums.SupportedOs) →
+      λ(release : enums.ReleaseType) →
         let config = merge osSpecificConfig os
 
-        let releaseStr = \(x : Text) -> merge { Release = x, Dev = "" } release
+        let releaseStr = λ(x : Text) → merge { Release = x, Dev = "" } release
 
         let releaseCond =
               merge
@@ -82,7 +82,7 @@ let mainBuilder =
                 )
             }
 
-in  \(os : enums.SupportedOs) ->
+in  λ(os : enums.SupportedOs) →
       let config = merge osSpecificConfig os
 
       in  GithubActions.Job::{

@@ -33,7 +33,7 @@ jobs:
           version: '1.40.1'
       - if: "github.event.name != 'pull_request'"
         name: Check github actions workflow
-        run: "yaml-to-dhall ./.github/workflows/schema.dhall < .github/workflows/ci.yml > expected.dhall\ndhall diff ./expected.dhall ./.github/workflows/ci.dhall"
+        run: "dhall lint .github/workflows/*.dhall\nyaml-to-dhall ./.github/workflows/schema.dhall < .github/workflows/ci.yml > expected.dhall\ndhall diff ./expected.dhall ./.github/workflows/ci.dhall"
       - name: Setup python 3.10
         uses: "actions/setup-python@v2"
         with:

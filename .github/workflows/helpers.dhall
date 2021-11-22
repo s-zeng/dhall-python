@@ -8,7 +8,7 @@ let Prelude =
 
 let unlines = Prelude.Text.concatSep "\n"
 
-let ghVar = \(varName : Text) -> "\${{ ${varName} }}"
+let ghVar = λ(varName : Text) → "\${{ ${varName} }}"
 
 let constants =
       { latestPython = "3.10"
@@ -33,7 +33,7 @@ let setup =
         , `with` = Some (toMap { version = "1.40.1" })
         }
       , python =
-          \(version : Text) ->
+          λ(version : Text) →
             GithubActions.Step::{
             , uses = Some "actions/setup-python@v2"
             , name = Some "Setup python ${version}"
@@ -47,8 +47,8 @@ let setup =
       }
 
 let installDeps =
-      \(installType : enums.DependencySet) ->
-      \(pythonExec : Text) ->
+      λ(installType : enums.DependencySet) →
+      λ(pythonExec : Text) →
         let fullDeps =
               [ "${pythonExec} -m pip install poetry"
               , "touch Cargo.toml.orig"

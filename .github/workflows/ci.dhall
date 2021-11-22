@@ -34,7 +34,8 @@ in  GithubActions.Workflow::{
               , `if` = Some "github.event.name != 'pull_request'"
               , run = Some
                   ( helpers.unlines
-                      [ "yaml-to-dhall ./.github/workflows/schema.dhall < .github/workflows/ci.yml > expected.dhall"
+                      [ "dhall lint .github/workflows/*.dhall"
+                      , "yaml-to-dhall ./.github/workflows/schema.dhall < .github/workflows/ci.yml > expected.dhall"
                       , "dhall diff ./expected.dhall ./.github/workflows/ci.dhall"
                       ]
                   )
@@ -59,8 +60,8 @@ in  GithubActions.Workflow::{
           , `if` = Some constants.releaseCreatedCondition
           , runs-on = GithubActions.RunsOn.Type.ubuntu-latest
           , steps =
-            [     GithubActions.steps.actions/checkout
-              //  { `with` = Some (toMap { ref = "master" }) }
+            [   GithubActions.steps.actions/checkout
+              ⫽ { `with` = Some (toMap { ref = "master" }) }
             , setup.python constants.latestPython
             , setup.rust
             , helpers.installDeps enums.DependencySet.Bump "python"
