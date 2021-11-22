@@ -1,222 +1,14 @@
-let GithubActions =
-      https://raw.githubusercontent.com/regadas/github-actions-dhall/master/package.dhall
-        sha256:66b276bb67cca4cfcfd1027da45857cc8d53e75ea98433b15dade1e1e1ec22c8
+let helpers = ./helpers.dhall
 
-let Prelude =
-      https://prelude.dhall-lang.org/v21.0.0/package.dhall
-        sha256:46c48bba5eee7807a872bbf6c3cb6ee6c2ec9498de3543c5dcc7dd950e43999d
+let builder = ./builder.dhall
 
-let helpers =
-      { unlines = Prelude.Text.concatSep "\n"
-      , ghVar = \(varName : Text) -> "\${{ ${varName} }}"
-      }
+let GithubActions = helpers.GithubActions
 
-let constants =
-      { latestPython = "3.10"
-      , matrixPython = helpers.ghVar "matrix.python-version"
-      , manylinuxContainer = "quay.io/pypa/manylinux_2_24_x86_64"
-      , supportedPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
-      , releaseCreatedCondition =
-          "github.event_name == 'release' && github.event.action == 'created'"
-      }
+let enums = helpers.enums
 
-let enums =
-      { DependencySet = < Full | Lint | Bump >
-      , SupportedOs = < Windows | Mac | Linux >
-      }
+let constants = helpers.constants
 
-let setup =
-      { dhall = GithubActions.Step::{
-        , uses = Some "dhall-lang/setup-dhall@v4"
-        , name = Some "Install dhall"
-        , `with` = Some (toMap { version = "1.40.1" })
-        }
-      , python =
-          \(version : Text) ->
-            GithubActions.Step::{
-            , uses = Some "actions/setup-python@v2"
-            , name = Some "Setup python ${version}"
-            , `with` = Some (toMap { python-version = version })
-            }
-      , rust = GithubActions.Step::{
-        , uses = Some "actions-rs/toolchain@v1"
-        , name = Some "Install Rust"
-        , `with` = Some (toMap { toolchain = "stable", override = "true" })
-        }
-      }
-
-let installDeps =
-      \(installType : enums.DependencySet) ->
-      \(pythonExec : Text) ->
-        let fullDeps =
-              [ "${pythonExec} -m pip install poetry"
-              , "touch Cargo.toml.orig"
-              , "${pythonExec} -m poetry install"
-              ]
-
-        let deps =
-              merge
-                { Full = fullDeps
-                , Lint =
-                  [ "${pythonExec} -m pip install black isort autoflake" ]
-                , Bump = [ "cargo install cargo-bump" ] # fullDeps
-                }
-                installType
-
-        in  GithubActions.Step::{
-            , name = Some "Install dependencies"
-            , run = Some
-                ( helpers.unlines
-                    ([ "${pythonExec} -m pip install --upgrade pip" ] # deps)
-                )
-            }
-
-let builder =
-      \(os : enums.SupportedOs) ->
-        let pythonExec =
-              merge
-                { Linux = "python${constants.matrixPython}"
-                , Mac = "python"
-                , Windows = "python"
-                }
-                os
-
-        let unixShared =
-              { interpreterArg =
-                  " --interpreter python${constants.matrixPython}"
-              , strategy = Some GithubActions.Strategy::{
-                , fail-fast = Some True
-                , matrix = toMap { python-version = constants.supportedPythons }
-                }
-              }
-
-        let container =
-              merge
-                { Linux = Some constants.manylinuxContainer
-                , Mac = None Text
-                , Windows = None Text
-                }
-                os
-
-        let runs-on =
-              merge
-                { Linux = GithubActions.RunsOn.Type.ubuntu-latest
-                , Mac = GithubActions.RunsOn.Type.macos-latest
-                , Windows = GithubActions.RunsOn.Type.windows-latest
-                }
-                os
-
-        let pythonSetup =
-              merge
-                { Linux = [] : List GithubActions.Step.Type
-                , Mac = [ setup.python constants.matrixPython ]
-                , Windows = [] : List GithubActions.Step.Type
-                }
-                os
-
-        let interpreterArg =
-              merge
-                { Linux = unixShared.interpreterArg
-                , Mac = unixShared.interpreterArg
-                , Windows = ""
-                }
-                os
-
-        let osName =
-              merge { Linux = "Linux", Mac = "Mac", Windows = "Windows" } os
-
-        let installer =
-              merge
-                { Linux = GithubActions.Step::{
-                  , name = Some "Install wheels"
-                  , run = Some
-                      "${pythonExec} -m pip install target/wheels/dhall*manylinux*.whl"
-                  }
-                , Mac = GithubActions.Step::{
-                  , name = Some "Install wheels"
-                  , run = Some
-                      "${pythonExec} -m pip install target/wheels/dhall*.whl"
-                  }
-                , Windows = GithubActions.Step::{
-                  , name = Some "Install wheels"
-                  , run = Some
-                      "${pythonExec} -m pip install --find-links=target\\wheels dhall"
-                  }
-                }
-                os
-
-        let strategy =
-              merge
-                { Linux = unixShared.strategy
-                , Mac = unixShared.strategy
-                , Windows = None GithubActions.Strategy.Type
-                }
-                os
-
-        let mainBuilder =
-              \(release : Bool) ->
-                GithubActions.Step::{
-                , name = Some
-                    "Build and test python package${if    release
-                                                    then  " (Release)"
-                                                    else  ""}"
-                , `if` = Some
-                    ( if    release
-                      then  constants.releaseCreatedCondition
-                      else  "!(${constants.releaseCreatedCondition})"
-                    )
-                , run = Some
-                    ( helpers.unlines
-                        [ "${pythonExec} -m poetry run maturin build ${if    release
-                                                                       then  "--release"
-                                                                       else  ""} --strip${interpreterArg}"
-                        , "${pythonExec} -m poetry run maturin develop"
-                        , "${pythonExec} -m poetry run pytest tests"
-                        ]
-                    )
-                }
-
-        in  GithubActions.Job::{
-            , name = Some "Build/test/publish ${osName}"
-            , runs-on
-            , container
-            , needs = Some [ "lint" ]
-            , strategy
-            , steps =
-                  pythonSetup
-                # [ setup.rust
-                  , GithubActions.steps.actions/checkout
-                  , installDeps enums.DependencySet.Full pythonExec
-                  , mainBuilder False
-                  , mainBuilder True
-                  , installer
-                  , GithubActions.Step::{
-                    , name = Some "Release"
-                    , uses = Some "softprops/action-gh-release@v1"
-                    , `if` = Some
-                        "startsWith(github.ref, 'refs/tags/') && ${constants.releaseCreatedCondition}"
-                    , `with` = Some
-                        (toMap { files = "target/wheels/dhall*.whl" })
-                    , env = Some
-                        ( toMap
-                            { GITHUB_TOKEN =
-                                helpers.ghVar "secrets.GITHUB_TOKEN"
-                            }
-                        )
-                    }
-                  , GithubActions.Step::{
-                    , name = Some "PyPI publish"
-                    , `if` = Some
-                        "startsWith(github.ref, 'refs/tags/') && ${constants.releaseCreatedCondition}"
-                    , env = Some
-                        ( toMap
-                            { MATURIN_PASSWORD = helpers.ghVar "secrets.PYPI" }
-                        )
-                    , run = Some
-                        "${pythonExec} -m poetry run maturin publish --no-sdist --username __token__${interpreterArg}"
-                    }
-                  ]
-            }
+let setup = helpers.setup
 
 in  GithubActions.Workflow::{
     , name = "CI"
@@ -248,7 +40,7 @@ in  GithubActions.Workflow::{
                   )
               }
             , setup.python constants.latestPython
-            , installDeps enums.DependencySet.Lint "python"
+            , helpers.installDeps enums.DependencySet.Lint "python"
             , GithubActions.Step::{
               , name = Some "Check lint"
               , run = Some
@@ -271,7 +63,7 @@ in  GithubActions.Workflow::{
               //  { `with` = Some (toMap { ref = "master" }) }
             , setup.python constants.latestPython
             , setup.rust
-            , installDeps enums.DependencySet.Bump "python"
+            , helpers.installDeps enums.DependencySet.Bump "python"
             , GithubActions.Step::{
               , name = Some "Bump and push"
               , run = Some
