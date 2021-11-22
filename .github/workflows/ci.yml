@@ -64,7 +64,7 @@ jobs:
         name: "Build and test python package (Release)"
         run: "python${{ matrix.python-version }} -m poetry run maturin build --release --strip --interpreter python${{ matrix.python-version }}\npython${{ matrix.python-version }} -m poetry run maturin develop\npython${{ matrix.python-version }} -m poetry run pytest tests"
       - name: Install wheels
-        run: "python${{ matrix.python-version }} -m pip install target/wheels/dhall*.whl"
+        run: "python${{ matrix.python-version }} -m pip install target/wheels/dhall*manylinux*.whl"
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         if: "startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' && github.event.action == 'created'"

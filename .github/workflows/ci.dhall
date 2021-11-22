@@ -88,11 +88,6 @@ let builder =
                 , fail-fast = Some True
                 , matrix = toMap { python-version = constants.supportedPythons }
                 }
-              , installer = GithubActions.Step::{
-                , name = Some "Install wheels"
-                , run = Some
-                    "${pythonExec} -m pip install target/wheels/dhall*.whl"
-                }
               }
 
         let container =
@@ -132,8 +127,16 @@ let builder =
 
         let installer =
               merge
-                { Linux = unixShared.installer
-                , Mac = unixShared.installer
+                { Linux = GithubActions.Step::{
+                  , name = Some "Install wheels"
+                  , run = Some
+                      "${pythonExec} -m pip install target/wheels/dhall*manylinux*.whl"
+                  }
+                , Mac = GithubActions.Step::{
+                  , name = Some "Install wheels"
+                  , run = Some
+                      "${pythonExec} -m pip install target/wheels/dhall*.whl"
+                  }
                 , Windows = GithubActions.Step::{
                   , name = Some "Install wheels"
                   , run = Some
