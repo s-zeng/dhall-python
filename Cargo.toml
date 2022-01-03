@@ -26,7 +26,7 @@ classifier = [
 serde_json = "1"
 serde = "1"
 serde_derive = "1"
-serde_dhall = "0.10"
+serde_dhall = "0.11"
 pyo3 = "0.15"
 thiserror = "1"
 openssl = {version = "0.10", features = ["vendored"]}
