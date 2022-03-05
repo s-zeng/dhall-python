@@ -1,16 +1,15 @@
 import string
 
+import dhall
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-import dhall
-
 # min, max: RFC 7159
-st_negatives = st.integers(min_value=-(2 ** 53) + 1, max_value=0)
-st_naturals = st.integers(min_value=0, max_value=(2 ** 53) - 1)
-st_int = st.integers(min_value=-(2 ** 53) + 1, max_value=(2 ** 53) - 1)
-st_floats = st.floats(min_value=-(2 ** 53) + 1, max_value=(2 ** 53) - 1)
+st_negatives = st.integers(min_value=-(2**53) + 1, max_value=0)
+st_naturals = st.integers(min_value=0, max_value=(2**53) - 1)
+st_int = st.integers(min_value=-(2**53) + 1, max_value=(2**53) - 1)
+st_floats = st.floats(min_value=-(2**53) + 1, max_value=(2**53) - 1)
 
 keywords = ["as"]
 

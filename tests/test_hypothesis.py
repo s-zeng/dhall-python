@@ -1,15 +1,14 @@
 import string
 
+import dhall
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-import dhall
-
 # min, max: RFC 7159
-st_naturals = st.integers(min_value=0, max_value=(2 ** 53) - 1)
-st_int = st.integers(min_value=-(2 ** 53) + 1, max_value=(2 ** 53) - 1)
-st_floats = st.floats(min_value=-(2 ** 53) + 1, max_value=(2 ** 53) - 1)
+st_naturals = st.integers(min_value=0, max_value=(2**53) - 1)
+st_int = st.integers(min_value=-(2**53) + 1, max_value=(2**53) - 1)
+st_floats = st.floats(min_value=-(2**53) + 1, max_value=(2**53) - 1)
 
 st_text = st.text(alphabet=st.characters(blacklist_categories=["Cn", "Cs"]))
 
@@ -51,7 +50,7 @@ def test_list_naturals(lst):
 
 
 @given(
-    st.lists(st.floats(min_value=-(2 ** 53) + 1, max_value=(2 ** 53) - 1), min_size=1)
+    st.lists(st.floats(min_value=-(2**53) + 1, max_value=(2**53) - 1), min_size=1)
 )
 def test_list_floats(lst):
     assert dhall.loads(dhall.dumps(lst)) == pytest.approx(lst)
