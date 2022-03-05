@@ -13,7 +13,7 @@ keywords = ["dhall", "python"]
 python = "^3.6"
 
 [tool.poetry.dev-dependencies]
-pytest = "~=6.1"
+pytest = "~=7.0"
 pylint = "~=2.6"
 flake8 = "~=4.0"
 wheel = "*"
