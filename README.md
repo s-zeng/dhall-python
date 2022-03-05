@@ -43,7 +43,6 @@ Supports the following:
   - Mac OS
   - Linux (manylinux_2_24_x86_64)
 - Python versions
-  - 3.6
   - 3.7
   - 3.8
   - 3.9

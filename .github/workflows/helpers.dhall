@@ -14,7 +14,7 @@ let constants =
       { latestPython = "3.10"
       , matrixPython = ghVar "matrix.python-version"
       , manylinuxContainer = "quay.io/pypa/manylinux_2_24_x86_64"
-      , supportedPythons = [ "3.6", "3.7", "3.8", "3.9", "3.10" ]
+      , supportedPythons = [ "3.7", "3.8", "3.9", "3.10" ]
       , releaseCreatedCondition =
           "github.event_name == 'release' && github.event.action == 'created'"
       , releaseTagCondition = "startsWith(github.ref, 'refs/tags/')"

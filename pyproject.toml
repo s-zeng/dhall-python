@@ -10,7 +10,7 @@ repository = "https://github.com/s-zeng/dhall-python"
 keywords = ["dhall", "python"]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 
 [tool.poetry.dev-dependencies]
 pytest = "~=7.0"
