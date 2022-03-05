@@ -1,6 +1,6 @@
 let GithubActions =
       https://raw.githubusercontent.com/regadas/github-actions-dhall/master/package.dhall
-        sha256:66b276bb67cca4cfcfd1027da45857cc8d53e75ea98433b15dade1e1e1ec22c8
+        sha256:53da2310a2e009556455a73684b997c3bd53192637ac3c77562c30e3815f5f23
 
 let Prelude =
       https://prelude.dhall-lang.org/v21.0.0/package.dhall
@@ -35,7 +35,7 @@ let setup =
       , python =
           λ(version : Text) →
             GithubActions.Step::{
-            , uses = Some "actions/setup-python@v2"
+            , uses = Some "actions/setup-python@v3"
             , name = Some "Setup python ${version}"
             , `with` = Some (toMap { python-version = version })
             }
