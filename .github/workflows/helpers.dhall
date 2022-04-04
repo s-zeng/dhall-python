@@ -1,6 +1,6 @@
 let GithubActions =
-      https://raw.githubusercontent.com/regadas/github-actions-dhall/master/package.dhall
-        sha256:53da2310a2e009556455a73684b997c3bd53192637ac3c77562c30e3815f5f23
+      https://raw.githubusercontent.com/regadas/github-actions-dhall/83be7a912cf81b80197897bc250ba38019d130c0/package.dhall
+        sha256:98ee16e6add21cc8ea7804cce55793b8793b14479f248d8f0bda0209d3600e18
 
 let Prelude =
       https://prelude.dhall-lang.org/v21.0.0/package.dhall
