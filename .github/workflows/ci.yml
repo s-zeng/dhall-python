@@ -30,7 +30,7 @@ jobs:
       - name: Install dhall
         uses: "dhall-lang/setup-dhall@v4"
         with:
-          version: '1.40.1'
+          version: '1.41.1'
       - if: "github.event.name != 'pull_request'"
         name: Check github actions workflow
         run: "dhall lint .github/workflows/*.dhall\nyaml-to-dhall ./.github/workflows/schema.dhall < .github/workflows/ci.yml > expected.dhall\ndhall diff ./expected.dhall ./.github/workflows/ci.dhall"

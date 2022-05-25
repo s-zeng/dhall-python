@@ -1,10 +1,10 @@
 let GithubActions =
-      https://raw.githubusercontent.com/regadas/github-actions-dhall/83be7a912cf81b80197897bc250ba38019d130c0/package.dhall
+      https://raw.githubusercontent.com/regadas/github-actions-dhall/afa8b8dad361f795ddd24e6d5c54b23e57bca623/package.dhall
         sha256:98ee16e6add21cc8ea7804cce55793b8793b14479f248d8f0bda0209d3600e18
 
 let Prelude =
-      https://prelude.dhall-lang.org/v21.0.0/package.dhall
-        sha256:46c48bba5eee7807a872bbf6c3cb6ee6c2ec9498de3543c5dcc7dd950e43999d
+      https://prelude.dhall-lang.org/v21.1.0/package.dhall
+        sha256:0fed19a88330e9a8a3fbe1e8442aa11d12e38da51eb12ba8bcb56f3c25d0854a
 
 let unlines = Prelude.Text.concatSep "\n"
 
@@ -30,7 +30,7 @@ let setup =
       { dhall = GithubActions.Step::{
         , uses = Some "dhall-lang/setup-dhall@v4"
         , name = Some "Install dhall"
-        , `with` = Some (toMap { version = "1.40.1" })
+        , `with` = Some (toMap { version = "1.41.1" })
         }
       , python =
           λ(version : Text) →
