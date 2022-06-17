@@ -48,6 +48,8 @@ Supports the following:
   - 3.9
   - 3.10
 
+Python 3.5 and 3.6 support is available in older versions of dhall-python.
+
 dhall-python implements a similar API to Python's [json
 module](https://docs.python.org/3/library/json.html):
 
