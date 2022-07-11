@@ -7,7 +7,7 @@ publish: ## Publish the binding
 
 .PHONY: build
 build: dev-packages ## Builds Rust code and dhall-python Python modules
-	poetry run maturin build --rustc-extra-args="-Wall"
+	poetry run maturin build #--rustc-extra-args="-Wall"
 
 .PHONY: build-release
 build-release: dev-packages ## Build dhall-python module in release mode
