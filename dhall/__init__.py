@@ -16,5 +16,7 @@ def remember_cwd():
 
 def load(fp):
     with remember_cwd():
-        os.chdir(os.path.dirname(fp.name))
+        newdir = os.path.dirname(fp.name)
+        if newdir != "":
+            os.chdir()
         return _dhall.load(fp)
