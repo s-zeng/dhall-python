@@ -7,7 +7,7 @@ jobs:
       - lint
     runs-on: ubuntu-latest
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3.1.0"
         with:
           ref: master
       - name: Setup python 3.10
@@ -27,7 +27,7 @@ jobs:
     name: Lint check
     runs-on: ubuntu-latest
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3.1.0"
       - name: Install dhall
         uses: "dhall-lang/setup-dhall@v4"
         with:
@@ -55,7 +55,7 @@ jobs:
         with:
           override: 'true'
           toolchain: stable
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3.1.0"
       - name: Install dependencies
         run: "python${{ matrix.python-version }} -m pip install --upgrade pip\npython${{ matrix.python-version }} -m pip install poetry\ntouch Cargo.toml.orig\npython${{ matrix.python-version }} -m poetry install"
       - if: "!(github.event_name == 'release' && github.event.action == 'created')"
@@ -101,7 +101,7 @@ jobs:
         with:
           override: 'true'
           toolchain: stable
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3.1.0"
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
       - if: "!(github.event_name == 'release' && github.event.action == 'created')"
@@ -143,7 +143,7 @@ jobs:
         with:
           override: 'true'
           toolchain: stable
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3.1.0"
       - name: Install dependencies
         run: "python -m pip install --upgrade pip\npython -m pip install poetry\ntouch Cargo.toml.orig\npython -m poetry install"
       - if: "!(github.event_name == 'release' && github.event.action == 'created')"
