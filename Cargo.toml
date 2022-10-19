@@ -1,6 +1,6 @@
 [package]
 name = "dhall"
-version = "0.1.14"
+version = "0.1.15"
 authors = ["Simon Zeng <contact@simonzeng.com>", "Tristan Cacqueray <tdecacqu@redhat.com>", "Matthias Endler <matthias-endler@gmx.net>"]
 description = "Python bindings for dhall, a functional configuration language"
 edition = "2018"
