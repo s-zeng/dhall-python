@@ -8,6 +8,16 @@ readme = "README.md"
 packages = [{ include = "dhall" }]
 repository = "https://github.com/s-zeng/dhall-python"
 keywords = ["dhall", "python"]
+classifier = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"
