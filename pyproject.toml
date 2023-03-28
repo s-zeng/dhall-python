@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{ include = "dhall" }]
 repository = "https://github.com/s-zeng/dhall-python"
 keywords = ["dhall", "python"]
-classifier = [
+classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",

@@ -10,18 +10,6 @@ homepage = "https://github.com/s-zeng/dhall-python"
 readme = "README.md"
 keywords = ["dhall", "python"]
 
-[package.metadata.maturin]
-classifier = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
-    "License :: OSI Approved",
-    "Operating System :: MacOS",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3",
-]
-
 [dependencies]
 serde_json = "1"
 serde = "1"
