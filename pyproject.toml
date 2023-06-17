@@ -31,7 +31,7 @@ pytest-runner = "*"
 pytest-benchmark = "*"
 hypothesis = "*"
 autopep8 = "*"
-maturin = "~=0.9"
+maturin = "~=1.1"
 
 [build-system]
 requires = ["maturin"]
