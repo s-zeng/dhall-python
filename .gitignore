@@ -117,3 +117,4 @@ perf.data
 perf.data.old
 poetry.lock
 Cargo.toml.orig
+.direnv/
