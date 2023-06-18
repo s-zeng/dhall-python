@@ -10,6 +10,8 @@ pkgs.mkShell {
     python310Packages.pytest
     black
     isort
+    dhall
+    dhall-json
   ];
 }
 #
