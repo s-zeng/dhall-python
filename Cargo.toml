@@ -15,7 +15,7 @@ serde_json = "1"
 serde = "1"
 serde_derive = "1"
 serde_dhall = "0.12"
-pyo3 = "0.19"
+pyo3 = "0.20"
 thiserror = "1"
 openssl = {version = "0.10", features = ["vendored"]}
 
