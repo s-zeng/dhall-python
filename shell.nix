@@ -5,6 +5,9 @@ pkgs.mkShell {
     poetry
     rustc
     cargo
+    darwin.apple_sdk.frameworks.Security
+    pkgconfig
+    openssl
   ];
   packages = with pkgs; [
     python310Packages.pytest
@@ -12,6 +15,7 @@ pkgs.mkShell {
     isort
     dhall
     dhall-json
+    rust-analyzer
   ];
 }
 #
